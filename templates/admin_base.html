@@ -205,7 +205,14 @@
                 <span>Evaluaciones</span>
             </a>
 
-            <!-- 6. Sorteos y Boletas -->
+            <!-- 6. Clientes & Pautas Publicitarias -->
+            <a href="{% url 'admin_clients' %}" class="admin-nav-item {% if active_tab == 'clients' %}active{% endif %}">
+                <i class="bi bi-person-lines-fill"></i>
+                <span>Clientes & Pautas</span>
+                <span class="badge bg-danger ms-auto rounded-pill" style="font-size: 0.65rem;">ADS</span>
+            </a>
+
+            <!-- 7. Sorteos y Boletas -->
             <a href="{% url 'admin_raffle' %}" class="admin-nav-item {% if active_tab == 'raffle' %}active{% endif %}">
                 <i class="bi bi-gift-fill"></i>
                 <span>Sorteos y Boletas</span>

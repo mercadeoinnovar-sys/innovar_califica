@@ -34,12 +34,14 @@ class EvaluationForm(forms.ModelForm):
         ]
         widgets = {
             "client_name": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "Tu nombre (opcional)"
+                "class": "form-control form-control-lg",
+                "placeholder": "Tu nombre completo (Obligatorio)",
+                "required": "required"
             }),
             "client_phone": forms.TextInput(attrs={
-                "class": "form-control",
-                "placeholder": "Tu celular / WhatsApp (opcional)"
+                "class": "form-control form-control-lg",
+                "placeholder": "Tu celular / WhatsApp (Obligatorio)",
+                "required": "required"
             }),
             "client_city": forms.TextInput(attrs={
                 "class": "form-control",
@@ -86,8 +88,10 @@ class EvaluationForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["advisor"].queryset = Advisor.objects.filter(is_active=True).select_related('location')
         self.fields["location"].queryset = Location.objects.all()
-        self.fields["client_name"].required = False
-        self.fields["client_phone"].required = False
+        # Nombre y Celular obligatorios para registro y futuras pautas publicitarias
+        self.fields["client_name"].required = True
+        self.fields["client_phone"].required = True
+        self.fields["data_authorization"].required = True
         self.fields["client_city"].required = False
         self.fields["comments"].required = False
         self.fields["invoice_amount"].required = False

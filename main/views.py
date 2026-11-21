@@ -111,6 +111,9 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
                 evaluation.ip_address = client_ip
                 evaluation.session_key = session_key
 
+                # No guardar archivos pesados de imagen en la base de datos para evitar saturación de almacenamiento
+                evaluation.invoice_image = None
+
                 # Regla de Sorteo: 1 boleta por cada $1.000.000 COP
                 if evaluation.invoice_amount and evaluation.invoice_amount >= 1000000:
                     evaluation.tickets_count = int(evaluation.invoice_amount // 1000000)
@@ -573,3 +576,96 @@ def export_evaluations_csv(request):
         ])
 
     return response
+
+
+@login_required(login_url='admin_login')
+def admin_clients(request):
+    """Módulo de Registro de Clientes para Pautas Publicitarias y Sorteos de Grupo Innovar."""
+    city_filter = request.GET.get("city", "")
+    raffle_filter = request.GET.get("raffle", "")
+    q = request.GET.get("q", "").strip()
+
+    evaluations = Evaluation.objects.filter(is_valid=True).exclude(client_phone="").select_related('advisor', 'location').order_by('-created_at')
+
+    if city_filter:
+        evaluations = evaluations.filter(location__city=city_filter)
+
+    if raffle_filter == "con_boletas":
+        evaluations = evaluations.filter(tickets_count__gt=0)
+    elif raffle_filter == "sin_boletas":
+        evaluations = evaluations.filter(tickets_count=0)
+
+    if q:
+        evaluations = evaluations.filter(
+            Q(client_name__icontains=q) |
+            Q(client_phone__icontains=q) |
+            Q(invoice_number__icontains=q) |
+            Q(ticket_codes__icontains=q)
+        )
+
+    total_clients = Evaluation.objects.filter(is_valid=True).exclude(client_phone="").count()
+    unique_phones = Evaluation.objects.filter(is_valid=True).exclude(client_phone="").values("client_phone").distinct().count()
+    raffle_clients = Evaluation.objects.filter(is_valid=True, tickets_count__gt=0).exclude(client_phone="").count()
+    total_sales = Evaluation.objects.filter(is_valid=True, invoice_amount__isnull=False).aggregate(total=Sum('invoice_amount'))['total'] or 0
+
+    # Lista de teléfonos únicos para copiar directo al administrador (Meta Ads / WhatsApp Broadcasts)
+    phone_list = [ev.client_phone.strip() for ev in evaluations if ev.client_phone and ev.client_phone.strip()]
+    phone_list_str = ", ".join(dict.fromkeys(phone_list))
+
+    return render(request, "main/admin_clients.html", {
+        "active_tab": "clients",
+        "evaluations": evaluations,
+        "city_filter": city_filter,
+        "raffle_filter": raffle_filter,
+        "q": q,
+        "total_clients": total_clients,
+        "unique_phones": unique_phones,
+        "raffle_clients": raffle_clients,
+        "total_sales": total_sales,
+        "phone_list_str": phone_list_str,
+        "cities": ["Ibagué", "Girardot", "Neiva", "Fusagasugá"],
+    })
+
+
+@login_required(login_url='admin_login')
+def export_clients_csv(request):
+    """Exportar base de datos de clientes para pautas publicitarias (Meta Ads, Google Ads, WhatsApp)."""
+    response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
+    response['Content-Disposition'] = 'attachment; filename="clientes_pautas_grupo_innovar.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "Nombre Cliente",
+        "Celular / WhatsApp",
+        "Ciudad",
+        "Sede Grupo Innovar",
+        "Asesor Atendió",
+        "Calificación (Estrellas)",
+        "Monto Compra (COP)",
+        "N° Factura",
+        "Boletas Sorteo",
+        "Códigos Boletas",
+        "Fecha Registro",
+        "Autorización Habeas Data (Ley 1581)"
+    ])
+
+    evaluations = Evaluation.objects.filter(is_valid=True).exclude(client_phone="").select_related('advisor', 'location').order_by('-created_at')
+
+    for ev in evaluations:
+        writer.writerow([
+            ev.client_name or "Cliente Registrado",
+            ev.client_phone,
+            ev.location.city,
+            ev.location.name,
+            ev.advisor.full_name,
+            ev.overall_star,
+            float(ev.invoice_amount) if ev.invoice_amount else 0,
+            ev.invoice_number or "N/D",
+            ev.tickets_count,
+            ev.ticket_codes or "Sin boletas",
+            ev.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "AUTORIZADO (Ley 1581 de 2012)" if ev.data_authorization else "NO"
+        ])
+
+    return response
+

@@ -73,26 +73,82 @@
 
         <!-- TARJETA OFICIAL DE BOLETAS PARA EL SORTEO (SI ALCANZÓ $1.000.000) -->
         {% if evaluation and evaluation.tickets_count > 0 %}
-        <div class="card border-0 rounded-4 p-4 mb-4 text-center shadow-sm" style="background: linear-gradient(135deg, #FFF1F2 0%, #FEF3C7 100%); border: 2px dashed #E11D48 !important;">
-            <div class="d-inline-flex align-items-center justify-content-center rounded-circle text-white mx-auto mb-2" style="width: 54px; height: 54px; background: var(--innovar-red); font-size: 1.6rem; box-shadow: 0 6px 16px rgba(225, 29, 72, 0.3);">
-                <i class="bi bi-ticket-perforated-fill"></i>
+        <!-- BOLETA DIGITAL DESCARGABLE -->
+        <div id="digitalTicketCard" class="card border-0 rounded-4 p-4 mb-3 text-center shadow" style="background: linear-gradient(135deg, #111827 0%, #1F2937 100%); color: white; border: 2px solid #E11D48 !important; position: relative; overflow: hidden;">
+            <!-- MARCA DE AGUA DE FONDO -->
+            <div style="position: absolute; right: -25px; bottom: -25px; opacity: 0.08; pointer-events: none;">
+                <img src="/static/images/isotipo_innovar_nuevo.png" alt="Grupo Innovar" style="width: 180px; height: auto;">
             </div>
-            <span class="badge bg-danger px-3 py-1 rounded-pill mx-auto mb-2" style="font-size: 0.72rem; letter-spacing: 0.05em;">
-                ¡Estás Participando en el Sorteo Oficial!
-            </span>
-            <h4 class="fw-bold text-dark mb-1">¡Tienes {{ evaluation.tickets_count }} Boleta{{ evaluation.tickets_count|pluralize:"s" }} Asignada{{ evaluation.tickets_count|pluralize:"s" }}!</h4>
-            <p class="small text-muted mb-3">
-                Por tu compra de <strong>${{ evaluation.invoice_amount|floatformat:0 }} COP</strong> en {{ evaluation.location.name }}.
-            </p>
-            <div class="p-3 bg-white rounded-3 border shadow-xs">
-                <small class="text-muted d-block mb-1 fw-semibold">Tus Números Oficiales de Boleta:</small>
-                <div class="h5 fw-bolder text-danger mb-0 font-monospace" style="letter-spacing: 0.08em;">
+
+            <!-- CABECERA DE LA BOLETA -->
+            <div class="d-flex align-items-center justify-content-between border-bottom pb-3 mb-3 border-secondary border-opacity-50">
+                <div class="d-flex align-items-center gap-2">
+                    <img src="/static/images/logo_grupo_innovar_blanco.png" alt="Grupo Innovar" style="height: 28px; width: auto;">
+                </div>
+                <span class="badge bg-danger text-uppercase px-2 py-1 rounded-pill" style="font-size: 0.68rem; letter-spacing: 0.06em;">
+                    Boleta Oficial de Sorteo
+                </span>
+            </div>
+
+            <h5 class="fw-bold mb-1 text-white">GRAN SORTEO GRUPO INNOVAR</h5>
+            <small class="text-white-50 d-block mb-3" style="font-size: 0.76rem;">Válido en tiendas de Ibagué, Girardot, Neiva y Fusagasugá</small>
+
+            <!-- CAJA DE CÓDIGOS DE BOLETA -->
+            <div class="p-3 rounded-3 mb-3" style="background: rgba(225, 29, 72, 0.15); border: 1.5px dashed #E11D48;">
+                <small class="text-uppercase fw-bold text-danger d-block mb-1" style="font-size: 0.72rem; letter-spacing: 0.08em;">
+                    TUS NÚMEROS DE PARTICIPACIÓN:
+                </small>
+                <div class="h3 fw-bolder text-white mb-0 font-monospace" style="letter-spacing: 0.1em; text-shadow: 0 2px 8px rgba(0,0,0,0.4);">
                     {{ evaluation.ticket_codes }}
                 </div>
+                <small class="text-white-50 mt-1 d-block" style="font-size: 0.72rem;">Total Boletas Asignadas: <strong>{{ evaluation.tickets_count }}</strong></small>
             </div>
-            <small class="text-muted d-block mt-2" style="font-size: 0.78rem;">
-                <i class="bi bi-whatsapp text-success me-1"></i> Te notificaremos al <strong>{{ evaluation.client_phone }}</strong> en la fecha del sorteo. ¡Muchos éxitos!
-            </small>
+
+            <!-- DETALLES DEL CLIENTE Y COMPRA -->
+            <div class="p-3 rounded-3 text-start mb-2" style="background: rgba(255, 255, 255, 0.05); font-size: 0.82rem;">
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-white-50">Titular de la Boleta:</span>
+                    <strong class="text-white">{{ evaluation.client_name }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-white-50">Celular Registrado:</span>
+                    <span class="text-white font-monospace">{{ evaluation.client_phone }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-white-50">Sede de Compra:</span>
+                    <span class="text-white">{{ evaluation.location.name }} ({{ evaluation.location.city }})</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-white-50">Total Factura Validada:</span>
+                    <strong class="text-danger">${{ evaluation.invoice_amount|floatformat:0 }} COP</strong>
+                </div>
+                {% if evaluation.invoice_number %}
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-white-50">N° Factura:</span>
+                    <span class="text-white-50 font-monospace">{{ evaluation.invoice_number }}</span>
+                </div>
+                {% endif %}
+                <div class="d-flex justify-content-between">
+                    <span class="text-white-50">Fecha de Emisión:</span>
+                    <span class="text-white-50">{{ evaluation.created_at|date:"d/m/Y h:i A" }}</span>
+                </div>
+            </div>
+
+            <!-- SELLO DIGITAL DE SEGURIDAD -->
+            <div class="d-flex align-items-center justify-content-between pt-2 border-top border-secondary border-opacity-50 text-white-50" style="font-size: 0.68rem;">
+                <span><i class="bi bi-shield-check text-success me-1"></i> Trazabilidad Ley 1581 de 2012</span>
+                <span class="font-monospace">FOLIO #INV-{{ evaluation.id|stringformat:"05d" }}</span>
+            </div>
+        </div>
+
+        <!-- BOTONES DE DESCARGA Y COMPARTIR -->
+        <div class="d-flex flex-column flex-sm-row gap-2 justify-content-center mb-4">
+            <button type="button" id="btnDownloadTicket" class="btn btn-danger btn-lg rounded-pill shadow px-4 py-2 fw-bold d-flex align-items-center justify-content-center gap-2">
+                <i class="bi bi-download"></i> <span>Descargar mi Boleta Oficial (PNG)</span>
+            </button>
+            <a href="https://api.whatsapp.com/send?text=¡Ya%20tengo%20mis%20boletas%20para%20el%20sorteo%20de%20Grupo%20Innovar!%20Números:%20{{ evaluation.ticket_codes|urlencode }}" target="_blank" class="btn btn-outline-success btn-lg rounded-pill shadow-xs px-3 py-2 fw-semibold d-flex align-items-center justify-content-center gap-2">
+                <i class="bi bi-whatsapp fs-5"></i> <span>Compartir</span>
+            </a>
         </div>
         {% endif %}
 
@@ -129,4 +185,43 @@
 
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- HTML2CANVAS PARA DESCARGA DE BOLETA DIGITAL -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+    const btnDownloadTicket = document.getElementById('btnDownloadTicket');
+    const digitalTicketCard = document.getElementById('digitalTicketCard');
+
+    if (btnDownloadTicket && digitalTicketCard) {
+        btnDownloadTicket.addEventListener('click', function() {
+            const originalBtnHtml = this.innerHTML;
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Generando Boleta...';
+
+            html2canvas(digitalTicketCard, {
+                scale: 3,
+                useCORS: true,
+                backgroundColor: '#111827'
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'Boleta_Sorteo_Grupo_Innovar_{{ evaluation.id|default:"ticket" }}.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+
+                btnDownloadTicket.disabled = false;
+                btnDownloadTicket.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i> ¡Boleta Guardada!';
+                setTimeout(() => {
+                    btnDownloadTicket.innerHTML = originalBtnHtml;
+                }, 3500);
+            }).catch(err => {
+                console.error('Error generando boleta:', err);
+                btnDownloadTicket.disabled = false;
+                btnDownloadTicket.innerHTML = originalBtnHtml;
+                alert('No se pudo generar la imagen. Puedes tomar una captura de pantalla a tu boleta.');
+            });
+        });
+    }
+</script>
 {% endblock %}
