@@ -74,7 +74,23 @@ class EvaluationForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         phone = cleaned.get("client_phone")
+        name = cleaned.get("client_name")
         advisor = cleaned.get("advisor")
+        data_auth = cleaned.get("data_authorization")
+        comments = cleaned.get("comments")
+
+        # Cumplimiento Ley 1581 de 2012 (Habeas Data) & ISO 27001:
+        # Si el cliente deja datos personales de contacto, la autorización explícita es obligatoria por ley
+        if (phone or name) and not data_auth:
+            self.add_error("data_authorization", "De conformidad con la Ley 1581 de 2012 (Habeas Data), debes autorizar el tratamiento de datos personales para registrar tu nombre o celular.")
+
+        # Sanitización estricta de seguridad contra inyecciones XSS / HTML (ISO 27001)
+        import html
+        if comments:
+            cleaned["comments"] = html.escape(comments.strip())
+        if name:
+            cleaned["client_name"] = html.escape(name.strip())
+
         if phone and advisor:
             today = timezone.now().date()
             already_evaluated = Evaluation.objects.filter(

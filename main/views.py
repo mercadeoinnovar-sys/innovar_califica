@@ -474,7 +474,7 @@ def export_evaluations_csv(request):
     writer.writerow([
         "ID", "Fecha y Hora", "Asesor", "Documento", "Sede", "Ciudad",
         "Estrellas", "Atención", "Claridad Info", "Conocimiento",
-        "Disposición", "Recomienda", "Cliente", "Celular", "Comentarios"
+        "Disposición", "Recomienda", "Cliente", "Celular", "Autorización Habeas Data", "Comentarios", "IP Auditoría"
     ])
 
     evaluations = Evaluation.objects.filter(is_valid=True).select_related('advisor', 'location').order_by('-created_at')
@@ -494,7 +494,9 @@ def export_evaluations_csv(request):
             ev.recommendation,
             ev.client_name or "Anónimo",
             ev.client_phone or "No registrado",
-            ev.comments or ""
+            "SÍ (Aceptada)" if ev.data_authorization else "NO",
+            ev.comments or "",
+            ev.ip_address or "N/D"
         ])
 
     return response

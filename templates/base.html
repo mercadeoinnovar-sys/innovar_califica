@@ -279,18 +279,86 @@
     </main>
 
     <!-- FOOTER CORPORATIVO -->
-    <footer class="footer-innovar text-center">
+    <footer class="footer-innovar text-center py-4">
         <div class="container">
-            <div class="row align-items-center">
-                <div class="col-md-6 text-md-start mb-2 mb-md-0">
-                    <span class="fw-bold" style="color: var(--innovar-dark);">GRUPO INNOVAR</span> &bull; Sistema Oficial de Calidad y Experiencia de Servicio
+            <div class="row align-items-center gy-3">
+                <div class="col-lg-5 text-lg-start">
+                    <div class="d-flex align-items-center justify-content-center justify-content-lg-start gap-2 mb-1">
+                        <img src="/static/images/isotipo_innovar.png" alt="Grupo Innovar" style="height: 24px;">
+                        <span class="fw-bold text-dark">GRUPO INNOVAR COLOMBIA</span>
+                    </div>
+                    <small class="text-muted d-block">Sistema Oficial de Evaluación de Calidad y Servicio Comercial en Mostrador.</small>
                 </div>
-                <div class="col-md-6 text-md-end text-muted">
-                    &copy; 2026 <strong>Grupo Innovar Colombia</strong>. Ibagué &bull; Girardot &bull; Neiva.
+                <div class="col-lg-7 text-lg-end">
+                    <div class="d-flex flex-wrap justify-content-center justify-content-lg-end align-items-center gap-2 mb-2">
+                        <span class="badge bg-light text-dark border"><i class="bi bi-shield-check text-success me-1"></i> Ley 1581 de 2012 (Habeas Data)</span>
+                        <span class="badge bg-light text-dark border"><i class="bi bi-patch-check-fill text-danger me-1"></i> ISO 9001 (Calidad)</span>
+                        <span class="badge bg-light text-dark border"><i class="bi bi-lock-fill text-primary me-1"></i> ISO 27001 (Seguridad)</span>
+                        <a href="#modalHabeasData" data-bs-toggle="modal" class="small text-danger fw-semibold text-decoration-underline ms-1">
+                            Política de Privacidad
+                        </a>
+                    </div>
+                    <small class="text-muted">
+                        &copy; 2026 <strong>Grupo Innovar</strong>. Puntos de venta autorizados en Ibagué, Girardot y Neiva.
+                    </small>
                 </div>
             </div>
         </div>
     </footer>
+
+    <!-- MODAL INSTITUCIONAL: POLÍTICA DE HABEAS DATA & TRATAMIENTO DE DATOS PERSONALES (LEY 1581 DE 2012 / ISO 27001) -->
+    <div class="modal fade" id="modalHabeasData" tabindex="-1" aria-labelledby="modalHabeasDataLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-lg">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom py-3" style="background: linear-gradient(135deg, #111827 0%, #1F2937 100%); color: white;">
+                    <div class="d-flex align-items-center gap-2">
+                        <img src="/static/images/isotipo_innovar.png" alt="Grupo Innovar" style="height: 28px;">
+                        <h5 class="modal-title fw-bold" id="modalHabeasDataLabel">Política de Tratamiento de Datos Personales</h5>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body p-4 text-start" style="font-size: 0.92rem; line-height: 1.6; color: #334155;">
+                    <div class="alert alert-light border d-flex align-items-center gap-3 p-3 mb-3 rounded-3">
+                        <i class="bi bi-shield-lock-fill text-danger fs-2 flex-shrink-0"></i>
+                        <div>
+                            <strong class="text-dark">GRUPO INNOVAR COLOMBIA</strong> &bull; Ibagué &bull; Girardot &bull; Neiva<br>
+                            <small class="text-muted">Compromiso institucional de protección de datos en cumplimiento de la Ley Estatutaria 1581 de 2012, Decreto Reglamentario 1377 de 2013 y estándares internacionales ISO 9001 (Calidad) e ISO/IEC 27001 (Seguridad de la Información).</small>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold text-dark mt-3"><i class="bi bi-building me-1 text-danger"></i> 1. Responsable del Tratamiento</h6>
+                    <p>El responsable del tratamiento de los datos personales suministrados a través de la plataforma de evaluación y servicio es <strong>GRUPO INNOVAR</strong>, con sede principal en la ciudad de Ibagué (Tolima) y salas de venta en Girardot (Cundinamarca) y Neiva (Huila).</p>
+
+                    <h6 class="fw-bold text-dark mt-3"><i class="bi bi-bullseye me-1 text-danger"></i> 2. Finalidades de la Recolección</h6>
+                    <p>La información recolectada (calificación del servicio y datos de contacto opcionales como nombre o celular) se destina exclusivamente a:</p>
+                    <ul>
+                        <li>Evaluar, auditar y elevar la calidad de atención brindada por el equipo comercial bajo principios de excelencia de la norma <strong>ISO 9001</strong>.</li>
+                        <li>Gestionar de forma prioritaria quejas, reclamos o inconformidades de clientes insatisfechos (protocolo de retención PQRS).</li>
+                        <li>Generar analítica estadística interna y planes de incentivos y reconocimiento a asesores destacados.</li>
+                        <li>Brindar seguimiento comercial a cotizaciones o solicitudes expresas de clientes que decidieron identificarse.</li>
+                    </ul>
+
+                    <h6 class="fw-bold text-dark mt-3"><i class="bi bi-person-check-fill me-1 text-danger"></i> 3. Derechos del Titular de los Datos (Habeas Data)</h6>
+                    <p>En concordancia con el artículo 8 de la Ley 1581 de 2012, usted como titular goza de los siguientes derechos:</p>
+                    <ul>
+                        <li><strong>Conocer, actualizar y rectificar</strong> sus datos personales frente a Grupo Innovar en cualquier momento.</li>
+                        <li><strong>Solicitar prueba de la autorización</strong> otorgada para el tratamiento de su información.</li>
+                        <li><strong>Revocar la autorización</strong> y/o solicitar la supresión definitiva de sus datos de nuestras bases de datos cuando considere que no se han respetado los principios legales.</li>
+                        <li><strong>Acceder de forma gratuita</strong> a sus datos objeto de tratamiento.</li>
+                    </ul>
+
+                    <h6 class="fw-bold text-dark mt-3"><i class="bi bi-shield-shaded me-1 text-danger"></i> 4. Seguridad de la Información (ISO/IEC 27001)</h6>
+                    <p>Grupo Innovar adopta medidas técnicas de cifrado en tránsito, bases de datos seguras con control de acceso por roles, protección contra inyecciones y registros de auditoría para garantizar que la información de los clientes no sufra adulteración, pérdida, consulta o acceso no autorizado.</p>
+
+                    <h6 class="fw-bold text-dark mt-3"><i class="bi bi-envelope-at-fill me-1 text-danger"></i> 5. Canales de Atención para Ejercicio de Habeas Data</h6>
+                    <p>Para consultas, peticiones de rectificación o supresión de datos, puede dirigirse al correo oficial: <strong class="text-danger">servicioalcliente@grupoinnovar.co</strong> o de forma física en cualquiera de nuestras 9 salas de venta en Ibagué, Girardot y Neiva.</p>
+                </div>
+                <div class="modal-footer border-top py-2">
+                    <button type="button" class="btn btn-dark rounded-pill px-4" data-bs-dismiss="modal">Cerrar y Conforme</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Bootstrap Bundle JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

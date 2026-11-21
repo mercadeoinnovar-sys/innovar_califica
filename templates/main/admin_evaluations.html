@@ -107,10 +107,15 @@
                         <td>
                             <div class="fw-semibold">{{ ev.client_name|default:"Anónimo" }}</div>
                             {% if ev.client_phone %}
-                            <div class="mt-1">
+                            <div class="mt-1 d-flex flex-wrap gap-1 align-items-center">
                                 <a href="https://wa.me/57{{ ev.client_phone }}" target="_blank" class="badge bg-success text-white text-decoration-none">
                                     <i class="bi bi-whatsapp me-1"></i>{{ ev.client_phone }}
                                 </a>
+                                {% if ev.data_authorization %}
+                                <span class="badge bg-light text-success border" style="font-size: 0.65rem;" title="Autorización Ley 1581 registrada">
+                                    <i class="bi bi-shield-check"></i> Habeas Data OK
+                                </span>
+                                {% endif %}
                             </div>
                             {% endif %}
                         </td>
