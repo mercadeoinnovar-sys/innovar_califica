@@ -379,20 +379,28 @@ def admin_evaluations(request):
 
 @login_required(login_url='admin_login')
 def admin_reports(request):
-    """Módulo de Reportes y Analítica con exportación."""
+    """Módulo de Reportes y Analítica con exportación e informe ejecutivo."""
     total_evals = Evaluation.objects.filter(is_valid=True).count()
     avg_rating = Evaluation.objects.filter(is_valid=True).aggregate(Avg('overall_star'))['overall_star__avg'] or 5.0
     
-    # Distribución por sede
+    # Distribución por sede oficial
     sede_stats = Location.objects.annotate(
         total_evals=Count('evaluations', filter=Q(evaluations__is_valid=True)),
         avg_stars=Avg('evaluations__overall_star', filter=Q(evaluations__is_valid=True))
+    ).order_by('-total_evals')
+
+    # Desempeño regional por Ciudad (Ibagué, Girardot y Neiva)
+    city_stats = Location.objects.values('city').annotate(
+        total_evals=Count('evaluations', filter=Q(evaluations__is_valid=True)),
+        avg_stars=Avg('evaluations__overall_star', filter=Q(evaluations__is_valid=True)),
+        advisor_count=Count('advisors', distinct=True)
     ).order_by('-total_evals')
 
     return render(request, "main/admin_reports.html", {
         "total_evals": total_evals,
         "avg_rating": round(avg_rating, 2),
         "sede_stats": sede_stats,
+        "city_stats": city_stats,
         "active_tab": "reports",
     })
 

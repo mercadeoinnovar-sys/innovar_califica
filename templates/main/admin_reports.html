@@ -2,6 +2,27 @@
 
 {% block title %}Reportes y Analítica | GRUPO INNOVAR{% endblock %}
 
+{% block extra_css %}
+<style>
+    @media print {
+        .admin-sidebar, .no-print, header, nav {
+            display: none !important;
+        }
+        .admin-wrapper {
+            margin-left: 0 !important;
+            padding: 0 !important;
+        }
+        body {
+            background: white !important;
+        }
+        .card-innovar {
+            box-shadow: none !important;
+            border: 1px solid #CBD5E1 !important;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block admin_content %}
 <div>
     <!-- HEADER -->
@@ -10,9 +31,14 @@
             <h3 class="fw-bold mb-1" style="color: var(--innovar-dark);">Reportes Ejecutivos y Métricas de Servicio</h3>
             <p class="text-muted small mb-0">Consolidado de desempeño por puntos de venta y satisfacción global.</p>
         </div>
-        <a href="{% url 'export_evaluations_csv' %}" class="btn btn-innovar d-flex align-items-center gap-2 rounded-pill btn-sm">
-            <i class="bi bi-file-earmark-arrow-down-fill"></i> Descargar Reporte Completo (CSV)
-        </a>
+        <div class="d-flex gap-2">
+            <button onclick="window.print()" class="btn btn-outline-dark d-flex align-items-center gap-2 rounded-pill btn-sm no-print">
+                <i class="bi bi-printer-fill"></i> Imprimir Informe
+            </button>
+            <a href="{% url 'export_evaluations_csv' %}" class="btn btn-innovar d-flex align-items-center gap-2 rounded-pill btn-sm no-print">
+                <i class="bi bi-file-earmark-arrow-down-fill"></i> Descargar Excel (CSV)
+            </a>
+        </div>
     </div>
 
     <!-- TARJETAS DE INDICADORES -->
@@ -83,6 +109,39 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- DESEMPEÑO REGIONAL CONSOLIDADO POR CIUDAD (IBAGUÉ, GIRARDOT Y NEIVA) -->
+    <div class="card-innovar p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-geo-alt-fill text-danger"></i> Desempeño Regional por Ciudad
+        </h5>
+        <div class="row g-3">
+            {% for c in city_stats %}
+            <div class="col-md-4">
+                <div class="p-3 rounded-4 bg-light border h-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-dark mb-0">{{ c.city }}</h6>
+                        <span class="badge bg-danger text-white">{{ c.advisor_count }} Asesores</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-end mb-2">
+                        <div>
+                            <span class="display-6 fw-bold text-dark">{{ c.avg_stars|floatformat:2|default:"5.0" }}</span>
+                            <small class="text-warning fs-5">★</small>
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted d-block">Evaluaciones</small>
+                            <span class="fw-bold text-dark">{{ c.total_evals }}</span>
+                        </div>
+                    </div>
+                    <div class="progress" style="height: 8px; border-radius: 4px;">
+                        <div class="progress-bar bg-success" style="width: {% if c.avg_stars %}{% widthratio c.avg_stars 5 100 %}{% else %}0{% endif %}%;"></div>
+                    </div>
+                    <small class="text-muted d-block mt-2 text-end">Índice: <strong>{% if c.avg_stars %}{% widthratio c.avg_stars 5 100 %}{% else %}0{% endif %}%</strong></small>
+                </div>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </div>

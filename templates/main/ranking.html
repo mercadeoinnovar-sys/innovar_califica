@@ -179,7 +179,14 @@
             <div class="h4 fw-bolder text-warning mb-1">
                 <i class="bi bi-star-fill"></i> {{ adv.avg_star|floatformat:2 }}
             </div>
-            <small class="text-muted d-block mb-3">Satisfacción: <strong>{{ adv.satisfaction_percentage }}%</strong> ({{ adv.eval_count }} eval.)</small>
+            <small class="text-muted d-block mb-2">Satisfacción: <strong>{{ adv.satisfaction_percentage }}%</strong> ({{ adv.eval_count }} eval.)</small>
+            <div class="d-flex flex-wrap justify-content-center gap-1 mb-3">
+                {% for b in adv.badges.all %}
+                <span class="badge py-1 px-2" style="background-color: #F8FAFC; color: #334155; font-size: 0.68rem; border: 1px solid #E2E8F0;">
+                    <i class="bi {{ b.icon }} text-warning me-1"></i>{{ b.name }}
+                </span>
+                {% endfor %}
+            </div>
             <a href="{% url 'advisor_detail' adv.id %}" class="btn btn-sm btn-outline-dark rounded-pill px-3">Ver Perfil</a>
         </div>
         {% endwith %}
@@ -199,7 +206,14 @@
             <div class="h3 fw-bolder mb-1" style="color: var(--innovar-red);">
                 <i class="bi bi-star-fill text-warning"></i> {{ adv.avg_star|floatformat:2 }}
             </div>
-            <small class="text-muted d-block mb-3">Satisfacción: <strong class="text-success">{{ adv.satisfaction_percentage }}%</strong> ({{ adv.eval_count }} eval.)</small>
+            <small class="text-muted d-block mb-2">Satisfacción: <strong class="text-success">{{ adv.satisfaction_percentage }}%</strong> ({{ adv.eval_count }} eval.)</small>
+            <div class="d-flex flex-wrap justify-content-center gap-1 mb-3">
+                {% for b in adv.badges.all %}
+                <span class="badge py-1 px-2" style="background-color: #FFFDF5; color: #B45309; font-size: 0.72rem; border: 1px solid #FDE68A;">
+                    <i class="bi {{ b.icon }} text-warning me-1"></i>{{ b.name }}
+                </span>
+                {% endfor %}
+            </div>
             <a href="{% url 'advisor_detail' adv.id %}" class="btn btn-sm btn-innovar rounded-pill px-4 shadow">Ver Perfil</a>
         </div>
         {% endwith %}
@@ -219,7 +233,14 @@
             <div class="h4 fw-bolder text-warning mb-1">
                 <i class="bi bi-star-fill"></i> {{ adv.avg_star|floatformat:2 }}
             </div>
-            <small class="text-muted d-block mb-3">Satisfacción: <strong>{{ adv.satisfaction_percentage }}%</strong> ({{ adv.eval_count }} eval.)</small>
+            <small class="text-muted d-block mb-2">Satisfacción: <strong>{{ adv.satisfaction_percentage }}%</strong> ({{ adv.eval_count }} eval.)</small>
+            <div class="d-flex flex-wrap justify-content-center gap-1 mb-3">
+                {% for b in adv.badges.all %}
+                <span class="badge py-1 px-2" style="background-color: #F8FAFC; color: #334155; font-size: 0.68rem; border: 1px solid #E2E8F0;">
+                    <i class="bi {{ b.icon }} text-warning me-1"></i>{{ b.name }}
+                </span>
+                {% endfor %}
+            </div>
             <a href="{% url 'advisor_detail' adv.id %}" class="btn btn-sm btn-outline-dark rounded-pill px-3">Ver Perfil</a>
         </div>
         {% endwith %}
@@ -265,6 +286,15 @@
                                         {{ adv.full_name }}
                                     </a>
                                     <div class="small text-muted">{{ adv.position }}</div>
+                                    {% if adv.badges.all %}
+                                    <div class="d-flex flex-wrap gap-1 mt-1">
+                                        {% for b in adv.badges.all %}
+                                        <span class="badge py-1 px-2" style="background-color: #F8FAFC; color: #334155; font-size: 0.65rem; border: 1px solid #E2E8F0;" title="{{ b.name }}">
+                                            <i class="bi {{ b.icon }} text-warning me-1"></i>{{ b.name }}
+                                        </span>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </td>
