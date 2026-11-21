@@ -212,8 +212,14 @@ def ranking(request):
     official_ranking = advisors_annotated.filter(eval_count__gte=5).order_by('-avg_star', '-eval_count')
     pending_advisors = advisors_annotated.filter(eval_count__lt=5).order_by('-eval_count', '-avg_star')
 
-    cities = Location.objects.values_list('city', flat=True).distinct()
-    locations = Location.objects.all()
+    # Lista única y ordenada de ciudades oficiales (sin redundancias)
+    cities = sorted(list({c.strip() for c in Location.objects.values_list('city', flat=True) if c}))
+    
+    # Sedes filtradas según la ciudad seleccionada
+    if city_filter:
+        locations = Location.objects.filter(city=city_filter)
+    else:
+        locations = Location.objects.all()
 
     podium = list(official_ranking[:3])
     rest_of_ranking = list(official_ranking[3:])
@@ -415,7 +421,7 @@ def admin_evaluations(request):
         evals = evals.filter(location__city=city_query)
 
     evaluations_list = evals.order_by('-created_at')[:50]
-    cities = Location.objects.values_list('city', flat=True).distinct()
+    cities = sorted(list({c.strip() for c in Location.objects.values_list('city', flat=True) if c}))
 
     return render(request, "main/admin_evaluations.html", {
         "evaluations_list": evaluations_list,
@@ -453,7 +459,7 @@ def admin_raffle(request):
     total_participants = Evaluation.objects.filter(is_valid=True, tickets_count__gt=0).count()
     total_sales_amount = Evaluation.objects.filter(is_valid=True, tickets_count__gt=0).aggregate(Sum('invoice_amount'))['invoice_amount__sum'] or 0
 
-    cities = Location.objects.values_list('city', flat=True).distinct()
+    cities = sorted(list({c.strip() for c in Location.objects.values_list('city', flat=True) if c}))
 
     return render(request, "main/admin_raffle.html", {
         "raffle_entries": raffle_entries,

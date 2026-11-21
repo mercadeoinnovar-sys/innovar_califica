@@ -11,6 +11,7 @@ class Location(models.Model):
     """Sede o ubicación donde opera el asesor."""
     name = models.CharField(max_length=120)
     city = models.CharField(max_length=100)
+    address = models.CharField(max_length=255, blank=True, default="", help_text="Dirección física de la sala de ventas")
 
     class Meta:
         verbose_name = "Sede"
