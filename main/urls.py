@@ -22,6 +22,7 @@ urlpatterns = [
     path('admin-dashboard/asesores/', views.admin_advisors, name='admin_advisors'),
     path('admin-dashboard/sedes/', views.admin_locations, name='admin_locations'),
     path('admin-dashboard/evaluaciones/', views.admin_evaluations, name='admin_evaluations'),
+    path('admin-dashboard/sorteos/', views.admin_raffle, name='admin_raffle'),
     path('admin-dashboard/reportes/', views.admin_reports, name='admin_reports'),
     path('admin-dashboard/configuracion/', views.admin_settings, name='admin_settings'),
     path('qr-management/', views.qr_management, name='qr_management'),

@@ -28,6 +28,9 @@ class EvaluationForm(forms.ModelForm):
             "overall_star",
             "comments",
             "data_authorization",
+            "invoice_amount",
+            "invoice_number",
+            "invoice_image",
         ]
         widgets = {
             "client_name": forms.TextInput(attrs={
@@ -59,6 +62,24 @@ class EvaluationForm(forms.ModelForm):
                 "rows": 3,
                 "placeholder": "¿Quieres dejarle un mensaje, felicitación o sugerencia al asesor? (Opcional)"
             }),
+            "invoice_amount": forms.NumberInput(attrs={
+                "class": "form-control form-control-lg fw-bold text-dark",
+                "placeholder": "Monto total pagado (ej: 1250000)",
+                "min": "0",
+                "step": "1000",
+                "id": "id_invoice_amount"
+            }),
+            "invoice_number": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Número o consecutivo de factura (ej: FE-10492)",
+                "id": "id_invoice_number"
+            }),
+            "invoice_image": forms.FileInput(attrs={
+                "class": "form-control",
+                "accept": "image/*",
+                "capture": "environment",
+                "id": "id_invoice_image"
+            }),
         }
 
     def __init__(self, *args, **kwargs):
@@ -69,6 +90,9 @@ class EvaluationForm(forms.ModelForm):
         self.fields["client_phone"].required = False
         self.fields["client_city"].required = False
         self.fields["comments"].required = False
+        self.fields["invoice_amount"].required = False
+        self.fields["invoice_number"].required = False
+        self.fields["invoice_image"].required = False
         self.fields["overall_star"].initial = 5
 
     def clean(self):
@@ -90,6 +114,20 @@ class EvaluationForm(forms.ModelForm):
             cleaned["comments"] = html.escape(comments.strip())
         if name:
             cleaned["client_name"] = html.escape(name.strip())
+
+        # Regla de Negocio: Sorteos Comerciales de Grupo Innovar
+        # 1 boleta por cada $1.000.000 COP en compras. Compras menores a 1 millón se ignoran en el registro del sorteo.
+        inv_amount = cleaned.get("invoice_amount")
+        if inv_amount and inv_amount >= 1000000:
+            tickets = int(inv_amount // 1000000)
+            cleaned["tickets_count"] = tickets
+            # Se requiere nombre y celular para que el cliente pueda ser notificado si resulta ganador
+            if not phone:
+                self.add_error("client_phone", "Para asignar tus boletas del sorteo, por favor indica tu celular / WhatsApp de contacto.")
+            if not name:
+                self.add_error("client_name", "Para asignar tus boletas del sorteo, por favor indica tu nombre completo.")
+        else:
+            cleaned["tickets_count"] = 0
 
         if phone and advisor:
             today = timezone.now().date()

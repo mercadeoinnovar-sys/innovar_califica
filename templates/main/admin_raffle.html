@@ -1,0 +1,305 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Control de Sorteos y Registro de Facturas | GRUPO INNOVAR{% endblock %}
+
+{% block admin_content %}
+<div>
+    <!-- HEADER -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom gap-3">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-danger text-uppercase px-2 py-1" style="font-size: 0.7rem;">Módulo Administrativo Exclusivo</span>
+                <span class="badge bg-warning text-dark px-2 py-1" style="font-size: 0.7rem;">Regla: 1 Boleta x $1'000.000</span>
+            </div>
+            <h3 class="fw-bold mb-1" style="color: var(--innovar-dark);">Registro de Facturas y Sorteos de Productos</h3>
+            <p class="text-muted small mb-0">Control oficial de clientes participantes, boletas asignadas y verificación de facturas escaneadas.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <!-- BOTÓN TÓMBOLA / SACAR GANADOR -->
+            <button type="button" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 rounded-pill btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#modalTombola">
+                <i class="bi bi-trophy-fill text-danger"></i> Sortear Ganador en Vivo
+            </button>
+            <a href="{% url 'export_evaluations_csv' %}" class="btn btn-innovar d-flex align-items-center gap-2 rounded-pill btn-sm">
+                <i class="bi bi-file-earmark-excel-fill"></i> Exportar Boletas
+            </a>
+        </div>
+    </div>
+
+    <!-- TARJETAS DE INDICADORES (KPIS DEL SORTEO) -->
+    <div class="row g-3 mb-4">
+        <!-- TOTAL BOLETAS -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card-innovar p-3 h-100" style="border-left: 5px solid var(--innovar-red);">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Boletas Emitidas</span>
+                    <span class="badge bg-danger"><i class="bi bi-ticket-perforated-fill"></i></span>
+                </div>
+                <div class="h3 fw-bold mb-0 text-danger">{{ total_tickets }}</div>
+                <small class="text-muted">Boletas en juego para el sorteo</small>
+            </div>
+        </div>
+
+        <!-- TOTAL CLIENTES PARTICIPANTES -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card-innovar p-3 h-100" style="border-left: 5px solid #10B981;">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Clientes Registrados</span>
+                    <span class="badge bg-success"><i class="bi bi-people-fill"></i></span>
+                </div>
+                <div class="h3 fw-bold mb-0 text-success">{{ total_participants }}</div>
+                <small class="text-muted">Compras &ge; $1'000.000 COP</small>
+            </div>
+        </div>
+
+        <!-- VENTAS TOTALES EN SORTEO -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card-innovar p-3 h-100" style="border-left: 5px solid #3B82F6;">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Ventas Participantes</span>
+                    <span class="badge bg-primary"><i class="bi bi-cash-stack"></i></span>
+                </div>
+                <div class="h4 fw-bold mb-0 text-dark">${{ total_sales_amount|floatformat:0 }}</div>
+                <small class="text-muted">Total facturado en sorteo</small>
+            </div>
+        </div>
+
+        <!-- PROMEDIO POR TICKET -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card-innovar p-3 h-100" style="border-left: 5px solid #F59E0B;">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Condición del Sorteo</span>
+                    <span class="badge bg-warning text-dark"><i class="bi bi-award-fill"></i></span>
+                </div>
+                <div class="h5 fw-bold mb-0 text-dark">$1.000.000 COP</div>
+                <small class="text-muted">Monto mínimo por boleta</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTROS Y BÚSQUEDA -->
+    <div class="card-innovar p-3 mb-4">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-7">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control border-start-0" placeholder="Buscar por cliente, WhatsApp, boleta (INV-...), factura o asesor..." value="{{ search_query }}">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="city" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Todas las ciudades</option>
+                    {% for c in cities %}
+                    <option value="{{ c }}" {% if selected_city == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-sm btn-dark w-100 rounded-pill">Filtrar</button>
+                {% if search_query or selected_city %}
+                <a href="{% url 'admin_raffle' %}" class="btn btn-sm btn-outline-secondary rounded-pill" title="Limpiar"><i class="bi bi-x-circle"></i></a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLA DE REGISTRO DE BOLETAS Y FACTURAS -->
+    <div class="card-innovar p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold mb-0">Listado Oficial de Boletas y Facturas Escaneadas</h5>
+                <small class="text-muted">Registro auditado conforme a las ventas registradas por encima de $1.000.000</small>
+            </div>
+            <span class="badge bg-light text-dark border">{{ raffle_entries|length }} registros encontrados</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Boletas Asignadas</th>
+                        <th>Cliente</th>
+                        <th>Celular / WhatsApp</th>
+                        <th>Valor Factura</th>
+                        <th>N° Factura</th>
+                        <th class="text-center">Escaneo / Foto</th>
+                        <th>Sede / Asesor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ev in raffle_entries %}
+                    <tr>
+                        <td class="text-nowrap text-muted">{{ ev.created_at|date:"d/m/Y H:i" }}</td>
+                        <td>
+                            <div class="d-flex flex-wrap gap-1">
+                                {% for code in ev.ticket_codes.split %}
+                                <span class="badge bg-danger text-white py-1 px-2 font-monospace" style="font-size: 0.75rem;">
+                                    <i class="bi bi-ticket-fill me-1"></i>{{ code|cut:"," }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                            <small class="text-muted fw-semibold">Total: {{ ev.tickets_count }} boleta{{ ev.tickets_count|pluralize:"s" }}</small>
+                        </td>
+                        <td>
+                            <strong class="text-dark">{{ ev.client_name }}</strong>
+                        </td>
+                        <td>
+                            <a href="https://wa.me/57{{ ev.client_phone }}?text=Hola%20{{ ev.client_name|urlencode }},%20te%20saludamos%20de%20Grupo%20Innovar.%20Tu%20compra%20ha%20sido%20registrada%20con%20éxito%20para%20el%20sorteo%20con%20las%20boletas:%20{{ ev.ticket_codes|urlencode }}." target="_blank" class="badge bg-success text-white text-decoration-none">
+                                <i class="bi bi-whatsapp me-1"></i>{{ ev.client_phone }}
+                            </a>
+                        </td>
+                        <td class="fw-bold text-dark fs-6">
+                            ${{ ev.invoice_amount|floatformat:0 }}
+                        </td>
+                        <td>
+                            {% if ev.invoice_number %}
+                            <span class="badge bg-light text-dark border font-monospace">{{ ev.invoice_number }}</span>
+                            {% else %}
+                            <span class="text-muted fst-italic">No digitado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if ev.invoice_image %}
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" onclick="showInvoiceModal('{{ ev.invoice_image.url }}', '{{ ev.client_name }}', '{{ ev.invoice_amount|floatformat:0 }}')">
+                                <i class="bi bi-image me-1"></i> Ver Factura
+                            </button>
+                            {% else %}
+                            <span class="badge bg-light text-muted">Sin foto adjunta</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div>{{ ev.location.name }} <span class="badge bg-light text-muted border">{{ ev.location.city }}</span></div>
+                            <small class="text-muted"><i class="bi bi-person me-1"></i>{{ ev.advisor.full_name }}</small>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i>
+                            No hay compras registradas con monto igual o superior a $1.000.000 COP todavía.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL VISOR DE FACTURA ESCANEADA (ALTA RESOLUCIÓN) -->
+<div class="modal fade" id="modalInvoiceViewer" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-bottom py-3" style="background: linear-gradient(135deg, #111827 0%, #1F2937 100%); color: white;">
+                <div>
+                    <h5 class="modal-title fw-bold" id="invoiceModalTitle">Factura Escaneada</h5>
+                    <small class="text-white-50" id="invoiceModalSubtitle"></small>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-3 text-center bg-light">
+                <img id="invoiceModalImg" src="" alt="Factura escaneada" class="img-fluid rounded-3 shadow border" style="max-height: 520px; object-fit: contain;">
+            </div>
+            <div class="modal-footer border-top py-2">
+                <a id="invoiceDownloadLink" href="" target="_blank" class="btn btn-sm btn-outline-dark rounded-pill">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Abrir en tamaño completo
+                </a>
+                <button type="button" class="btn btn-sm btn-dark rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL TÓMBOLA / SORTEO DIGITAL EN VIVO -->
+<div class="modal fade" id="modalTombola" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow text-center p-4">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle text-white mx-auto mb-3" style="width: 70px; height: 70px; background: var(--innovar-red); font-size: 2.2rem;">
+                <i class="bi bi-trophy-fill"></i>
+            </div>
+            <h4 class="fw-bold mb-1" style="color: var(--innovar-dark);">Gran Sorteo Oficial Grupo Innovar</h4>
+            <p class="text-muted small mb-4">Selección transparente y al azar entre las boletas registradas (&ge; $1'000.000 COP).</p>
+
+            <div class="p-4 rounded-4 bg-light border mb-4">
+                <span class="text-muted small d-block mb-1">Boleta Ganadora:</span>
+                <div class="display-6 fw-bold text-danger font-monospace mb-2" id="winnerTicketDisplay">
+                    ---
+                </div>
+                <div id="winnerClientBox" class="d-none">
+                    <h5 class="fw-bold text-dark mb-1" id="winnerNameDisplay"></h5>
+                    <span class="badge bg-success fs-6 px-3 py-1 mb-2" id="winnerPhoneDisplay"></span>
+                    <p class="small text-muted mb-0" id="winnerDetailsDisplay"></p>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 justify-content-center">
+                <button type="button" class="btn btn-innovar btn-lg rounded-pill px-4" id="btnSpinTombola">
+                    <i class="bi bi-dice-5-fill me-1"></i> ¡Girar Tómbola y Elegir Ganador!
+                </button>
+                <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Datos de los participantes para la tómbola
+    const participants = [
+        {% for ev in raffle_entries %}
+        {% for code in ev.ticket_codes.split %}
+        {
+            ticket: "{{ code|cut:',' }}",
+            client: "{{ ev.client_name|escapejs }}",
+            phone: "{{ ev.client_phone|escapejs }}",
+            location: "{{ ev.location.name|escapejs }} ({{ ev.location.city|escapejs }})",
+            amount: "${{ ev.invoice_amount|floatformat:0|escapejs }}"
+        }{% if not forloop.last or not forloop.parentloop.last %},{% endif %}
+        {% endfor %}
+        {% endfor %}
+    ];
+
+    function showInvoiceModal(imgUrl, clientName, amount) {
+        document.getElementById('invoiceModalImg').src = imgUrl;
+        document.getElementById('invoiceDownloadLink').href = imgUrl;
+        document.getElementById('invoiceModalTitle').textContent = `Factura de ${clientName}`;
+        document.getElementById('invoiceModalSubtitle').textContent = `Monto registrado: $${amount} COP`;
+        new bootstrap.Modal(document.getElementById('modalInvoiceViewer')).show();
+    }
+
+    // Tómbola Digital
+    const btnSpin = document.getElementById('btnSpinTombola');
+    const winnerDisplay = document.getElementById('winnerTicketDisplay');
+    const winnerBox = document.getElementById('winnerClientBox');
+    const winnerName = document.getElementById('winnerNameDisplay');
+    const winnerPhone = document.getElementById('winnerPhoneDisplay');
+    const winnerDetails = document.getElementById('winnerDetailsDisplay');
+
+    if (btnSpin) {
+        btnSpin.addEventListener('click', function() {
+            if (participants.length === 0) {
+                alert("No hay boletas registradas en este momento para realizar el sorteo.");
+                return;
+            }
+
+            btnSpin.disabled = true;
+            winnerBox.classList.add('d-none');
+            let counter = 0;
+            const interval = setInterval(() => {
+                const randomPick = participants[Math.floor(Math.random() * participants.length)];
+                winnerDisplay.textContent = randomPick.ticket;
+                counter++;
+                if (counter > 25) {
+                    clearInterval(interval);
+                    btnSpin.disabled = false;
+                    winnerName.textContent = randomPick.client;
+                    winnerPhone.textContent = `WhatsApp: ${randomPick.phone}`;
+                    winnerDetails.textContent = `Compra de ${randomPick.amount} en ${randomPick.location}`;
+                    winnerBox.classList.remove('d-none');
+                }
+            }, 80);
+        });
+    }
+</script>
+{% endblock %}

@@ -121,6 +121,14 @@ class Evaluation(models.Model):
     data_authorization = models.BooleanField(default=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     session_key = models.CharField(max_length=64, blank=True, null=True)
+
+    # Módulo de Sorteos Comerciales de Grupo Innovar (1 Boleta x cada $1.000.000 COP)
+    invoice_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Total pagado en factura")
+    invoice_number = models.CharField(max_length=60, blank=True, help_text="Número o consecutivo de factura")
+    invoice_image = models.ImageField(upload_to="invoices/", blank=True, null=True, help_text="Foto o escaneo de la factura física")
+    tickets_count = models.PositiveIntegerField(default=0, help_text="Boletas asignadas (1 por cada millón)")
+    ticket_codes = models.CharField(max_length=255, blank=True, help_text="Números de boleta asignados (ej: BOL-1001, BOL-1002)")
+
     created_at = models.DateTimeField(default=timezone.now)
     is_valid = models.BooleanField(default=True)
 

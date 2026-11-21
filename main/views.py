@@ -4,7 +4,7 @@ import csv
 from datetime import datetime
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count, Q, Sum
 from django.utils import timezone
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -99,7 +99,7 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
             post_data["location"] = str(selected_advisor.location.id)
             post_data["client_city"] = selected_advisor.location.city
 
-        form = EvaluationForm(post_data)
+        form = EvaluationForm(post_data, request.FILES)
         if form.is_valid():
             if already_voted:
                 form.add_error(None, "Ya has registrado una calificación para este asesor en las últimas 24 horas. ¡Agradecemos mucho tu valiosa opinión!")
@@ -110,7 +110,22 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
                     evaluation.client_city = evaluation.advisor.location.city
                 evaluation.ip_address = client_ip
                 evaluation.session_key = session_key
+
+                # Regla de Sorteo: 1 boleta por cada $1.000.000 COP
+                if evaluation.invoice_amount and evaluation.invoice_amount >= 1000000:
+                    evaluation.tickets_count = int(evaluation.invoice_amount // 1000000)
+                else:
+                    evaluation.tickets_count = 0
+                    evaluation.ticket_codes = ""
+
                 evaluation.save()
+
+                # Generar números oficiales de boleta si califica para el sorteo
+                if evaluation.tickets_count > 0:
+                    codes = [f"INV-{evaluation.id:04d}-{i+1}" for i in range(evaluation.tickets_count)]
+                    evaluation.ticket_codes = ", ".join(codes)
+                    evaluation.save(update_fields=["ticket_codes"])
+
                 return render(request, "main/thank_you.html", {
                     "evaluation": evaluation,
                     "advisor": evaluation.advisor
@@ -264,6 +279,9 @@ def admin_dashboard(request):
     critical_evals = Evaluation.objects.filter(is_valid=True, overall_star__lte=2).select_related('advisor', 'location').order_by('-created_at')[:6]
     critical_count = Evaluation.objects.filter(is_valid=True, overall_star__lte=2).count()
 
+    # Boletas de sorteo acumuladas (compras >= 1 millón)
+    raffle_tickets_count = Evaluation.objects.filter(is_valid=True, tickets_count__gt=0).aggregate(Sum('tickets_count'))['tickets_count__sum'] or 0
+
     # Gráficos
     star_distribution = [
         Evaluation.objects.filter(is_valid=True, overall_star=s).count()
@@ -285,6 +303,7 @@ def admin_dashboard(request):
         "satisfaction_rate": satisfaction_rate,
         "critical_evals": critical_evals,
         "critical_count": critical_count,
+        "raffle_tickets_count": raffle_tickets_count,
         "recent_evals": recent_evals,
         "star_distribution": star_distribution,
         "city_labels": city_labels,
@@ -374,6 +393,46 @@ def admin_evaluations(request):
         "selected_star": star_query,
         "selected_city": city_query,
         "active_tab": "evaluations",
+    })
+
+
+@login_required(login_url='admin_login')
+def admin_raffle(request):
+    """Módulo exclusivo para Administradores: Registro de Facturas y Sorteos de Productos (Grupo Innovar)."""
+    city_filter = request.GET.get("city", "")
+    search_query = request.GET.get("q", "")
+
+    qs = Evaluation.objects.filter(is_valid=True, tickets_count__gt=0).select_related('advisor', 'location')
+
+    if city_filter:
+        qs = qs.filter(location__city=city_filter)
+    if search_query:
+        qs = qs.filter(
+            Q(client_name__icontains=search_query) |
+            Q(client_phone__icontains=search_query) |
+            Q(invoice_number__icontains=search_query) |
+            Q(ticket_codes__icontains=search_query) |
+            Q(advisor__full_name__icontains=search_query)
+        )
+
+    raffle_entries = qs.order_by('-created_at')
+
+    # Métricas consolidadas del sorteo
+    total_tickets = Evaluation.objects.filter(is_valid=True, tickets_count__gt=0).aggregate(Sum('tickets_count'))['tickets_count__sum'] or 0
+    total_participants = Evaluation.objects.filter(is_valid=True, tickets_count__gt=0).count()
+    total_sales_amount = Evaluation.objects.filter(is_valid=True, tickets_count__gt=0).aggregate(Sum('invoice_amount'))['invoice_amount__sum'] or 0
+
+    cities = Location.objects.values_list('city', flat=True).distinct()
+
+    return render(request, "main/admin_raffle.html", {
+        "raffle_entries": raffle_entries,
+        "total_tickets": total_tickets,
+        "total_participants": total_participants,
+        "total_sales_amount": total_sales_amount,
+        "cities": cities,
+        "selected_city": city_filter,
+        "search_query": search_query,
+        "active_tab": "raffle",
     })
 
 
@@ -482,7 +541,9 @@ def export_evaluations_csv(request):
     writer.writerow([
         "ID", "Fecha y Hora", "Asesor", "Documento", "Sede", "Ciudad",
         "Estrellas", "Atención", "Claridad Info", "Conocimiento",
-        "Disposición", "Recomienda", "Cliente", "Celular", "Autorización Habeas Data", "Comentarios", "IP Auditoría"
+        "Disposición", "Recomienda", "Cliente", "Celular", "Autorización Habeas Data",
+        "Monto Factura (COP)", "N° Factura", "Boletas Sorteo", "Códigos Boletas",
+        "Comentarios", "IP Auditoría"
     ])
 
     evaluations = Evaluation.objects.filter(is_valid=True).select_related('advisor', 'location').order_by('-created_at')
@@ -503,6 +564,10 @@ def export_evaluations_csv(request):
             ev.client_name or "Anónimo",
             ev.client_phone or "No registrado",
             "SÍ (Aceptada)" if ev.data_authorization else "NO",
+            float(ev.invoice_amount) if ev.invoice_amount else 0,
+            ev.invoice_number or "N/D",
+            ev.tickets_count,
+            ev.ticket_codes or "N/D",
             ev.comments or "",
             ev.ip_address or "N/D"
         ])

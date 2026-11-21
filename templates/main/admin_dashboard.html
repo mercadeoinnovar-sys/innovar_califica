@@ -58,11 +58,23 @@
             </div>
         </div>
 
+        <!-- BOLETAS SORTEO -->
+        <div class="col-sm-6 col-xl-2">
+            <div class="card-innovar p-3 h-100" style="border-left: 4px solid var(--innovar-red);">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Sorteo</span>
+                    <span class="badge bg-danger"><i class="bi bi-ticket-perforated-fill"></i></span>
+                </div>
+                <div class="h3 fw-bold mb-0 text-danger">{{ raffle_tickets_count }}</div>
+                <small class="text-muted"><a href="{% url 'admin_raffle' %}" class="text-danger fw-semibold text-decoration-none">Ver boletas &rarr;</a></small>
+            </div>
+        </div>
+
         <!-- PROMEDIO SATISFACCIÓN -->
-        <div class="col-sm-6 col-xl-3">
+        <div class="col-sm-6 col-xl-2">
             <div class="card-innovar p-3 h-100">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="text-muted small fw-bold text-uppercase">Promedio General</span>
+                    <span class="text-muted small fw-bold text-uppercase">Promedio</span>
                     <span class="badge bg-warning text-dark"><i class="bi bi-star-fill"></i></span>
                 </div>
                 <div class="h3 fw-bold mb-0 text-danger">{{ avg_rating }} <small class="fs-6 text-muted">/ 5.0</small></div>
@@ -71,14 +83,14 @@
         </div>
 
         <!-- ÍNDICE DE SATISFACCIÓN -->
-        <div class="col-sm-12 col-xl-3">
-            <div class="card-innovar p-3 h-100" style="border-left: 5px solid #10B981;">
+        <div class="col-sm-12 col-xl-2">
+            <div class="card-innovar p-3 h-100" style="border-left: 4px solid #10B981;">
                 <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="text-muted small fw-bold text-uppercase">Índice Satisfacción</span>
+                    <span class="text-muted small fw-bold text-uppercase">Satisfacción</span>
                     <span class="badge bg-success"><i class="bi bi-arrow-up-right"></i></span>
                 </div>
                 <div class="h3 fw-bold mb-0 text-success">{{ satisfaction_rate }}%</div>
-                <small class="text-muted">Meta corporativa: &gt; 85%</small>
+                <small class="text-muted">Meta: &gt; 85%</small>
             </div>
         </div>
     </div>

@@ -206,6 +206,12 @@
                 <span>Evaluaciones</span>
             </a>
 
+            <!-- 6. Sorteos y Boletas -->
+            <a href="{% url 'admin_raffle' %}" class="admin-nav-item {% if active_tab == 'raffle' %}active{% endif %}">
+                <i class="bi bi-gift-fill"></i>
+                <span>Sorteos y Boletas</span>
+            </a>
+
             <!-- 6. Códigos QR -->
             <a href="{% url 'qr_management' %}" class="admin-nav-item {% if active_tab == 'qrcodes' %}active{% endif %}">
                 <i class="bi bi-qr-code-scan"></i>
