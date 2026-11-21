@@ -185,19 +185,22 @@
         <p class="text-muted small mb-3">Tu opinión nos ayuda a brindarte la mejor experiencia en Grupo Innovar.</p>
     </div>
 
-    <!-- TARJETA DEL ASESOR IDENTIFICADO AUTOMÁTICAMENTE POR QR -->
+    <!-- TARJETA DEL ASESOR IDENTIFICADO AUTOMÁTICAMENTE POR QR DE MESA -->
     {% if selected_advisor %}
-    <div class="advisor-header-card">
-        <div class="advisor-avatar-circle">
+    <div class="advisor-header-card mb-4 shadow">
+        <div class="advisor-avatar-circle" style="background: #FFFFFF; color: #D90429; font-weight: 800; font-size: 1.5rem; border: 2px solid #FFFFFF;">
             {{ selected_advisor.full_name|slice:":1" }}
         </div>
         <div class="flex-grow-1">
-            <div class="d-flex align-items-center gap-2 mb-1">
-                <span class="badge bg-success text-white py-1 px-2 rounded-pill small" style="font-size: 0.7rem;">
-                    <i class="bi bi-patch-check-fill me-1"></i> Asesor Identificado
+            <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                <span class="badge bg-success text-white py-1 px-2 rounded-pill small" style="font-size: 0.72rem;">
+                    <i class="bi bi-qr-code-scan me-1"></i> QR de Mesa Escaneado
+                </span>
+                <span class="badge bg-dark text-white-50 py-1 px-2 rounded-pill small" style="font-size: 0.68rem;">
+                    <i class="bi bi-lock-fill text-warning me-1"></i> Asesor fijado automáticamente
                 </span>
             </div>
-            <h5 class="fw-bold mb-0 text-white">{{ selected_advisor.full_name }}</h5>
+            <h4 class="fw-bold mb-0 text-white" style="letter-spacing: -0.02em;">{{ selected_advisor.full_name }}</h4>
             <small class="text-white-50 d-block mt-1">
                 <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ selected_advisor.location.name }} &bull; {{ selected_advisor.location.city }}
             </small>
@@ -232,27 +235,49 @@
             </div>
             {% endif %}
 
-            <!-- SI NO VIENE POR QR DE ASESOR ESPECÍFICO, MUESTRA SELECTOR -->
-            {% if not selected_advisor %}
+            <!-- ASIGNACIÓN DE ASESOR: BLOQUEADO POR QR O SELECTOR GUIADO -->
+            {% if selected_advisor %}
+            <div class="p-3 mb-4 rounded-4 border d-flex align-items-center gap-3 shadow-xs" style="background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border-color: #86EFAC !important;">
+                <div class="d-flex align-items-center justify-content-center rounded-circle bg-success text-white shadow-xs flex-shrink-0" style="width: 44px; height: 44px; font-size: 1.25rem;">
+                    <i class="bi bi-person-check-fill"></i>
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge bg-success text-uppercase px-2 py-0" style="font-size: 0.65rem; letter-spacing: 0.05em;">
+                            <i class="bi bi-check2-circle me-1"></i> Verificado
+                        </span>
+                        <span class="text-muted small" style="font-size: 0.72rem;">
+                            <i class="bi bi-shield-lock-fill text-success"></i> Calificando al asesor de tu mesa
+                        </span>
+                    </div>
+                    <div class="fw-bold text-dark fs-6">{{ selected_advisor.full_name }}</div>
+                    <small class="text-muted d-block" style="font-size: 0.74rem;">
+                        {{ selected_advisor.position|default:"Asesor Comercial" }} &bull; {{ selected_advisor.location.name }} ({{ selected_advisor.location.city }})
+                    </small>
+                </div>
+            </div>
+            <input type="hidden" name="advisor" value="{{ selected_advisor.id }}">
+            <input type="hidden" name="location" value="{{ selected_advisor.location.id }}">
+            {% else %}
+            <!-- SELECTOR SI NO ESCANEÓ UN QR ESPECÍFICO -->
             <div class="question-block">
                 <label class="question-title">
                     <span class="q-number"><i class="bi bi-person-fill"></i></span>
-                    ¿Qué asesor comercial te atendió?
+                    ¿Qué asesor comercial te atendió hoy?
                 </label>
                 <select name="advisor" id="id_advisor" class="form-select form-select-lg mb-2" required>
-                    <option value="" disabled selected>Selecciona al asesor...</option>
+                    <option value="" disabled selected>Selecciona al asesor de tu atención...</option>
                     {% for adv in advisors_list %}
-                    <option value="{{ adv.id }}" data-location="{{ adv.location.id }}" data-city="{{ adv.location.city }}">
+                    <option value="{{ adv.id }}" data-location="{{ adv.location.id }}" data-city="{{ adv.location.city }}" data-name="{{ adv.full_name }}">
                         {{ adv.full_name }} — {{ adv.location.name }} ({{ adv.location.city }})
                     </option>
                     {% endfor %}
                 </select>
                 <input type="hidden" name="location" id="id_location" value="{{ selected_location.id|default:'' }}">
+                <div id="selectedAdvisorFeedback" class="alert alert-success d-none py-2 px-3 rounded-3 mt-2 small">
+                    <i class="bi bi-check-circle-fill me-1"></i> Calificando a: <strong id="feedbackAdvisorName"></strong>
+                </div>
             </div>
-            {% else %}
-            <!-- EL ASESOR Y SEDE YA ESTÁN FIJOS Y NO LE PIDEN NADA AL CLIENTE -->
-            <input type="hidden" name="advisor" value="{{ selected_advisor.id }}">
-            <input type="hidden" name="location" value="{{ selected_advisor.location.id }}">
             {% endif %}
 
             <!-- CALIFICACIÓN EN 5 ESTRELLAS GRANDES (LO PRIMERO QUE VE EL CLIENTE) -->
@@ -604,11 +629,18 @@
     // En caso de que entre sin asesor fijado
     const advisorSelect = document.getElementById('id_advisor');
     const locationInput = document.getElementById('id_location');
+    const selectedAdvisorFeedback = document.getElementById('selectedAdvisorFeedback');
+    const feedbackAdvisorName = document.getElementById('feedbackAdvisorName');
+
     if (advisorSelect && locationInput) {
         advisorSelect.addEventListener('change', function() {
             const selected = this.options[this.selectedIndex];
-            if (selected) {
+            if (selected && selected.value) {
                 locationInput.value = selected.getAttribute('data-location') || '';
+                if (selectedAdvisorFeedback && feedbackAdvisorName) {
+                    feedbackAdvisorName.textContent = selected.getAttribute('data-name') || selected.text;
+                    selectedAdvisorFeedback.classList.remove('d-none');
+                }
             }
         });
     }

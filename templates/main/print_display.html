@@ -224,13 +224,15 @@
 
             <!-- MARCO DEL CÓDIGO QR -->
             <div class="qr-frame">
-                {% if qr and qr.image %}
-                    <img src="{{ qr.image.url }}" alt="Código QR de Calificación">
-                {% else %}
-                    <div style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; color: #94A3B8;">
-                        Código QR
-                    </div>
-                {% endif %}
+                <div id="dynamicQrBox" style="width: 200px; height: 200px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
+                    {% if qr and qr.image %}
+                        <img src="{{ qr.image.url }}" alt="Código QR de Calificación" style="width: 200px; height: 200px; object-fit: contain;">
+                    {% else %}
+                        <div style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; color: #94A3B8;">
+                            Código QR
+                        </div>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- ESTRELLAS -->
@@ -251,5 +253,24 @@
         </div>
     </div>
 
+    <!-- GENERADOR DE QR CON ENLACE DIRECTO COMPLETO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        const fullUrl = "{{ full_evaluation_url|default:'' }}";
+        if (fullUrl && typeof QRCode !== 'undefined') {
+            const container = document.getElementById('dynamicQrBox');
+            if (container) {
+                container.innerHTML = '';
+                new QRCode(container, {
+                    text: fullUrl,
+                    width: 200,
+                    height: 200,
+                    colorDark: "#111827",
+                    colorLight: "#FFFFFF",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            }
+        }
+    </script>
 </body>
 </html>

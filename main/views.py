@@ -33,8 +33,19 @@ def home(request):
 
 
 def evaluate_advisor_direct(request, advisor_code):
-    """Acceso QR directo por código de asesor (Ej: /evaluar/ASESOR-001/). Cero fricción."""
-    advisor = get_object_or_404(Advisor.objects.select_related('location'), identifier=advisor_code)
+    """Acceso QR directo por código o ID de asesor (Ej: /evaluar/ASESOR-001/). Selecciona al compañero automáticamente sin errores."""
+    clean_code = str(advisor_code).strip()
+    advisor = None
+    if clean_code.isdigit():
+        advisor = Advisor.objects.filter(id=int(clean_code), is_active=True).select_related('location').first()
+    if not advisor:
+        advisor = Advisor.objects.filter(identifier__iexact=clean_code, is_active=True).select_related('location').first()
+    if not advisor:
+        qr = QRCode.objects.filter(code__iexact=clean_code, advisor__isnull=False).select_related('advisor__location').first()
+        if qr:
+            advisor = qr.advisor
+    if not advisor:
+        return redirect("evaluate_es")
     return _process_evaluation(request, selected_advisor=advisor, selected_location=advisor.location)
 
 
@@ -45,19 +56,36 @@ def evaluate_location_direct(request, location_id):
 
 
 def evaluate(request):
-    """Formulario interactivo de evaluación (parámetros GET o selector libre)."""
-    advisor_id = request.GET.get("advisor")
-    location_id = request.GET.get("location")
+    """Formulario interactivo de evaluación con detección y bloqueo automático de asesor por QR."""
+    advisor_param = (
+        request.GET.get("advisor") or
+        request.GET.get("asesor") or
+        request.GET.get("code") or
+        request.GET.get("qr") or
+        request.GET.get("id") or
+        request.GET.get("c")
+    )
+    location_id = request.GET.get("location") or request.GET.get("sede")
 
     selected_advisor = None
     selected_location = None
 
-    if advisor_id:
-        selected_advisor = Advisor.objects.filter(id=advisor_id, is_active=True).first()
+    if advisor_param:
+        clean_adv = str(advisor_param).strip()
+        if clean_adv.isdigit():
+            selected_advisor = Advisor.objects.filter(id=int(clean_adv), is_active=True).select_related('location').first()
+        if not selected_advisor:
+            selected_advisor = Advisor.objects.filter(identifier__iexact=clean_adv, is_active=True).select_related('location').first()
+        if not selected_advisor:
+            qr = QRCode.objects.filter(code__iexact=clean_adv, advisor__isnull=False).select_related('advisor__location').first()
+            if qr:
+                selected_advisor = qr.advisor
         if selected_advisor:
             selected_location = selected_advisor.location
+
     elif location_id:
-        selected_location = Location.objects.filter(id=location_id).first()
+        if str(location_id).isdigit():
+            selected_location = Location.objects.filter(id=int(location_id)).first()
 
     return _process_evaluation(request, selected_advisor=selected_advisor, selected_location=selected_location)
 
@@ -493,19 +521,26 @@ def print_counter_display(request, advisor_id=None, location_id=None):
     advisor = None
     location = None
     qr = None
+    target_path = "/evaluar/"
 
     if advisor_id:
         advisor = get_object_or_404(Advisor.objects.select_related('location'), pk=advisor_id)
         location = advisor.location
         qr = QRCode.objects.filter(advisor=advisor).first()
+        target_path = f"/evaluar/{advisor.identifier}/"
     elif location_id:
         location = get_object_or_404(Location, pk=location_id)
         qr = QRCode.objects.filter(location=location, advisor__isnull=True).first()
+        target_path = f"/evaluar/sede/{location.id}/"
+
+    full_evaluation_url = request.build_absolute_uri(target_path)
 
     return render(request, "main/print_display.html", {
         "advisor": advisor,
         "location": location,
         "qr": qr,
+        "target_path": target_path,
+        "full_evaluation_url": full_evaluation_url,
     })
 
 
