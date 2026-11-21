@@ -1,0 +1,139 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Registro de Evaluaciones | GRUPO INNOVAR{% endblock %}
+
+{% block admin_content %}
+<div>
+    <!-- HEADER -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom gap-3">
+        <div>
+            <h3 class="fw-bold mb-1" style="color: var(--innovar-dark);">Registro de Evaluaciones de Clientes</h3>
+            <p class="text-muted small mb-0">Consulta en tiempo real cada calificación recibida mediante código QR.</p>
+        </div>
+        <a href="{% url 'export_evaluations_csv' %}" class="btn btn-innovar d-flex align-items-center gap-2 rounded-pill btn-sm">
+            <i class="bi bi-file-earmark-excel-fill"></i> Descargar Todo en Excel (CSV)
+        </a>
+    </div>
+
+    <!-- FILTROS Y BÚSQUEDA -->
+    <div class="card-innovar p-3 mb-4">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-5">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control border-start-0" placeholder="Buscar por asesor, cliente o palabra en comentarios..." value="{{ search_query }}">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select name="city" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Todas las ciudades</option>
+                    {% for c in cities %}
+                    <option value="{{ c }}" {% if selected_city == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="star" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Todas las estrellas</option>
+                    <option value="critical" {% if selected_star == 'critical' %}selected{% endif %} style="font-weight: bold; color: #DC2626;">🚨 Casos Críticos (1-2★)</option>
+                    <option value="5" {% if selected_star == '5' %}selected{% endif %}>5 Estrellas</option>
+                    <option value="4" {% if selected_star == '4' %}selected{% endif %}>4 Estrellas</option>
+                    <option value="3" {% if selected_star == '3' %}selected{% endif %}>3 Estrellas</option>
+                    <option value="2" {% if selected_star == '2' %}selected{% endif %}>2 Estrellas</option>
+                    <option value="1" {% if selected_star == '1' %}selected{% endif %}>1 Estrella</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-1">
+                <button type="submit" class="btn btn-sm btn-dark w-100 rounded-pill">Filtrar</button>
+                {% if search_query or selected_city or selected_star %}
+                <a href="{% url 'admin_evaluations' %}" class="btn btn-sm btn-outline-secondary rounded-pill" title="Limpiar"><i class="bi bi-x-circle"></i></a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLA DE EVALUACIONES -->
+    <div class="card-innovar p-4 mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50px;">ID</th>
+                        <th>Fecha</th>
+                        <th>Asesor Evaluado</th>
+                        <th>Sede / Ciudad</th>
+                        <th class="text-center">⭐ Calificación</th>
+                        <th>Respuestas Clave</th>
+                        <th>Cliente</th>
+                        <th>Comentario / Felicitación</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ev in evaluations_list %}
+                    <tr {% if ev.overall_star <= 2 %}style="background-color: #FEF2F2;"{% endif %}>
+                        <td class="font-monospace small text-muted">#{{ ev.id }}</td>
+                        <td class="text-nowrap small text-muted">
+                            {{ ev.created_at|date:"d/m/Y H:i" }}
+                        </td>
+                        <td>
+                            <a href="{% url 'advisor_detail' ev.advisor.id %}" class="fw-bold text-dark text-decoration-none hover-red">
+                                {{ ev.advisor.full_name }}
+                            </a>
+                            <div class="small text-muted font-monospace">{{ ev.advisor.identifier }}</div>
+                        </td>
+                        <td>
+                            <div>{{ ev.location.name }}</div>
+                            <small class="text-muted"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ ev.location.city }}</small>
+                        </td>
+                        <td class="text-center">
+                            {% if ev.overall_star <= 2 %}
+                            <span class="badge bg-danger text-white fs-6 px-2 shadow-sm">
+                                {{ ev.overall_star }} ★ ALERTA
+                            </span>
+                            {% elif ev.overall_star >= 4 %}
+                            <span class="badge bg-warning text-dark fs-6 px-2">
+                                {{ ev.overall_star }} ★
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary text-white fs-6 px-2">
+                                {{ ev.overall_star }} ★
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="small">
+                            <div>Atención: <strong>{{ ev.attention_quality }}</strong></div>
+                            <div>Recomienda: <strong>{{ ev.recommendation }}</strong></div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ ev.client_name|default:"Anónimo" }}</div>
+                            {% if ev.client_phone %}
+                            <div class="mt-1">
+                                <a href="https://wa.me/57{{ ev.client_phone }}" target="_blank" class="badge bg-success text-white text-decoration-none">
+                                    <i class="bi bi-whatsapp me-1"></i>{{ ev.client_phone }}
+                                </a>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td style="max-width: 300px;">
+                            {% if ev.comments %}
+                                <span class="d-inline-block text-dark" style="font-size: 0.92rem;">
+                                    "{{ ev.comments }}"
+                                </span>
+                            {% else %}
+                                <em class="small text-black-50">Sin comentario</em>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-5 text-muted">
+                            No se encontraron evaluaciones con los filtros seleccionados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

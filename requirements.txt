@@ -1,0 +1,5 @@
+# requirements.txt
+Django>=4.2,<5.0
+qrcode[pil]
+Pillow
+psycopg2-binary

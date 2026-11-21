@@ -1,0 +1,465 @@
+{% extends "base.html" %}
+
+{% block title %}Calificar Atención | GRUPO INNOVAR{% endblock %}
+
+{% block extra_css %}
+<style>
+    .eval-container {
+        max-width: 620px;
+        margin: 0 auto;
+    }
+
+    .eval-card {
+        background: #FFFFFF;
+        border-radius: 20px;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.06);
+        padding: 2rem 1.8rem;
+    }
+
+    @media (max-width: 576px) {
+        .eval-card {
+            padding: 1.4rem 1.1rem;
+            border-radius: 16px;
+        }
+    }
+
+    /* Asesor Header Card */
+    .advisor-header-card {
+        background: linear-gradient(135deg, #111827 0%, #1F2937 100%);
+        color: #FFFFFF;
+        border-radius: 16px;
+        padding: 1.25rem 1.4rem;
+        margin-bottom: 1.8rem;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .advisor-avatar-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--innovar-red);
+        color: #FFFFFF;
+        font-weight: 800;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(217, 4, 41, 0.35);
+    }
+
+    /* Opciones interactivas táctiles */
+    .option-card-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 8px;
+    }
+
+    .option-pill-label {
+        display: block;
+        padding: 11px 12px;
+        background: #F8FAFC;
+        border: 2px solid #E2E8F0;
+        border-radius: 12px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 0.88rem;
+        color: #334155;
+        cursor: pointer;
+        transition: all 0.15s ease-in-out;
+        user-select: none;
+    }
+
+    .option-pill-label:hover {
+        background: #F1F5F9;
+        border-color: #CBD5E1;
+    }
+
+    input[type="radio"]:checked + .option-pill-label {
+        background: #FFF0F2 !important;
+        border-color: var(--innovar-red) !important;
+        color: var(--innovar-red) !important;
+        box-shadow: 0 4px 12px rgba(217, 4, 41, 0.15);
+    }
+
+    .question-block {
+        margin-bottom: 1.6rem;
+        padding-bottom: 1.4rem;
+        border-bottom: 1px dashed #E2E8F0;
+    }
+
+    .question-block:last-child {
+        border-bottom: none;
+    }
+
+    .question-title {
+        font-weight: 700;
+        font-size: 0.98rem;
+        color: var(--innovar-dark);
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .q-number {
+        background: var(--innovar-red);
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+
+    /* Estrellas interactivas grandes */
+    .stars-box {
+        background: #F8FAFC;
+        border: 2px solid #E2E8F0;
+        border-radius: 16px;
+        padding: 1.5rem 1rem;
+        text-align: center;
+        margin-bottom: 1.8rem;
+    }
+
+    .star-rating {
+        display: flex;
+        justify-content: center;
+        gap: 14px;
+        font-size: 2.7rem;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .star-rating .bi-star-fill, .star-rating .bi-star {
+        transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s ease;
+        color: #CBD5E1;
+    }
+
+    .star-rating .star-active {
+        color: #FFB703 !important;
+        filter: drop-shadow(0 3px 8px rgba(255, 183, 3, 0.45));
+    }
+
+    .star-rating .bi:hover {
+        transform: scale(1.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container eval-container">
+
+    <!-- HEADER INSTITUCIONAL -->
+    <div class="text-center mb-3">
+        <div class="d-inline-flex align-items-center gap-2 mb-1">
+            <img src="/static/images/isotipo_innovar.png" alt="Grupo Innovar" style="height: 38px; width: auto;">
+            <span class="fw-bolder fs-3" style="letter-spacing: -0.03em;">GRUPO <span style="color: var(--innovar-red);">INNOVAR</span></span>
+        </div>
+        <p class="text-muted small mb-3">Tu opinión nos ayuda a brindarte la mejor experiencia en Grupo Innovar.</p>
+    </div>
+
+    <!-- TARJETA DEL ASESOR IDENTIFICADO AUTOMÁTICAMENTE POR QR -->
+    {% if selected_advisor %}
+    <div class="advisor-header-card">
+        <div class="advisor-avatar-circle">
+            {{ selected_advisor.full_name|slice:":1" }}
+        </div>
+        <div class="flex-grow-1">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-success text-white py-1 px-2 rounded-pill small" style="font-size: 0.7rem;">
+                    <i class="bi bi-patch-check-fill me-1"></i> Asesor Identificado
+                </span>
+            </div>
+            <h5 class="fw-bold mb-0 text-white">{{ selected_advisor.full_name }}</h5>
+            <small class="text-white-50 d-block mt-1">
+                <i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ selected_advisor.location.name }} &bull; {{ selected_advisor.location.city }}
+            </small>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- FORMULARIO DE EVALUACIÓN (CERO FRICCIÓN) -->
+    <div class="eval-card mb-5">
+        <form method="post" id="evalForm">
+            {% csrf_token %}
+
+            {% if already_voted %}
+            <div class="alert alert-warning border-0 rounded-4 p-3 mb-4 d-flex align-items-center gap-3 shadow-sm" style="background-color: #FFFBEB; border-left: 5px solid #F59E0B !important;">
+                <i class="bi bi-exclamation-triangle-fill fs-2 text-warning flex-shrink-0"></i>
+                <div>
+                    <h6 class="fw-bold mb-1 text-dark">Calificación ya registrada hoy</h6>
+                    <p class="small text-muted mb-0">Ya has calificado a este asesor en las últimas 24 horas desde este dispositivo. Tu opinión ya fue tomada en cuenta para el ranking oficial. ¡Muchas gracias!</p>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger rounded-3 mb-4">
+                {{ form.non_field_errors }}
+            </div>
+            {% endif %}
+
+            <!-- SI NO VIENE POR QR DE ASESOR ESPECÍFICO, MUESTRA SELECTOR -->
+            {% if not selected_advisor %}
+            <div class="question-block">
+                <label class="question-title">
+                    <span class="q-number"><i class="bi bi-person-fill"></i></span>
+                    ¿Qué asesor comercial te atendió?
+                </label>
+                <select name="advisor" id="id_advisor" class="form-select form-select-lg mb-2" required>
+                    <option value="" disabled selected>Selecciona al asesor...</option>
+                    {% for adv in advisors_list %}
+                    <option value="{{ adv.id }}" data-location="{{ adv.location.id }}" data-city="{{ adv.location.city }}">
+                        {{ adv.full_name }} — {{ adv.location.name }} ({{ adv.location.city }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <input type="hidden" name="location" id="id_location" value="{{ selected_location.id|default:'' }}">
+            </div>
+            {% else %}
+            <!-- EL ASESOR Y SEDE YA ESTÁN FIJOS Y NO LE PIDEN NADA AL CLIENTE -->
+            <input type="hidden" name="advisor" value="{{ selected_advisor.id }}">
+            <input type="hidden" name="location" value="{{ selected_advisor.location.id }}">
+            {% endif %}
+
+            <!-- CALIFICACIÓN EN 5 ESTRELLAS GRANDES (LO PRIMERO QUE VE EL CLIENTE) -->
+            <div class="stars-box">
+                <label class="fw-bold fs-5 text-dark mb-1 d-block">
+                    ¿Cómo calificarías la atención en general?
+                </label>
+                <small class="text-muted d-block mb-3">Toca las estrellas para calificar (1 a 5 estrellas)</small>
+
+                <input type="hidden" name="overall_star" id="overall_star_input" value="5">
+
+                <div class="star-rating mb-2" id="starContainer">
+                    <i class="bi bi-star-fill star-active" data-val="1"></i>
+                    <i class="bi bi-star-fill star-active" data-val="2"></i>
+                    <i class="bi bi-star-fill star-active" data-val="3"></i>
+                    <i class="bi bi-star-fill star-active" data-val="4"></i>
+                    <i class="bi bi-star-fill star-active" data-val="5"></i>
+                </div>
+
+                <div class="fw-bold fs-5" id="starLabel" style="color: var(--innovar-red);">
+                    ¡Excelente Servicio! (5/5)
+                </div>
+            </div>
+
+            <!-- PREGUNTA 1: ATENCIÓN -->
+            <div class="question-block">
+                <label class="question-title">
+                    <span class="q-number">1</span>
+                    ¿Cómo calificarías el trato recibido por nuestro asesor?
+                </label>
+                <div class="option-card-group">
+                    <label class="w-100">
+                        <input type="radio" name="attention_quality" value="Excelente" class="d-none" checked>
+                        <span class="option-pill-label"><i class="bi bi-emoji-heart-eyes me-1 text-danger"></i> Excelente</span>
+                    </label>
+                    <label class="w-100">
+                        <input type="radio" name="attention_quality" value="Buena" class="d-none">
+                        <span class="option-pill-label"><i class="bi bi-emoji-smile me-1 text-success"></i> Buena</span>
+                    </label>
+                    <label class="w-100">
+                        <input type="radio" name="attention_quality" value="Regular" class="d-none">
+                        <span class="option-pill-label"><i class="bi bi-emoji-neutral me-1 text-warning"></i> Regular</span>
+                    </label>
+                    <label class="w-100">
+                        <input type="radio" name="attention_quality" value="Mala" class="d-none">
+                        <span class="option-pill-label"><i class="bi bi-emoji-frown me-1 text-muted"></i> Mala</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- PREGUNTA 2: CLARIDAD -->
+            <div class="question-block">
+                <label class="question-title">
+                    <span class="q-number">2</span>
+                    ¿Te brindó información clara sobre los productos?
+                </label>
+                <div class="option-card-group">
+                    <label class="w-100">
+                        <input type="radio" name="info_clarity" value="Sí, completamente" class="d-none" checked>
+                        <span class="option-pill-label"><i class="bi bi-check-circle-fill text-success me-1"></i> Sí, clara</span>
+                    </label>
+                    <label class="w-100">
+                        <input type="radio" name="info_clarity" value="Parcialmente" class="d-none">
+                        <span class="option-pill-label"><i class="bi bi-dash-circle-fill text-warning me-1"></i> Parcial</span>
+                    </label>
+                    <label class="w-100">
+                        <input type="radio" name="info_clarity" value="No" class="d-none">
+                        <span class="option-pill-label"><i class="bi bi-x-circle-fill text-danger me-1"></i> No</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- PREGUNTA 3: CONOCIMIENTO -->
+            <div class="question-block">
+                <label class="question-title">
+                    <span class="q-number">3</span>
+                    ¿Demostró conocimiento sobre los productos y materiales?
+                </label>
+                <div class="option-card-group">
+                    <label class="w-100">
+                        <input type="radio" name="product_knowledge" value="Sí" class="d-none" checked>
+                        <span class="option-pill-label"><i class="bi bi-check-circle-fill text-success me-1"></i> Sí, conoce</span>
+                    </label>
+                    <label class="w-100">
+                        <input type="radio" name="product_knowledge" value="Más o menos" class="d-none">
+                        <span class="option-pill-label"><i class="bi bi-dash-circle-fill text-warning me-1"></i> Regular</span>
+                    </label>
+                    <label class="w-100">
+                        <input type="radio" name="product_knowledge" value="No" class="d-none">
+                        <span class="option-pill-label"><i class="bi bi-x-circle-fill text-danger me-1"></i> No</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- PREGUNTA 4: DISPOSICIÓN -->
+            <div class="question-block">
+                <label class="question-title">
+                    <span class="q-number">4</span>
+                    ¿Mostró buena disposición y amabilidad para ayudarte?
+                </label>
+                <div class="option-card-group">
+                    <label class="w-100">
+                        <input type="radio" name="disposition" value="Siempre" class="d-none" checked>
+                        <span class="option-pill-label"><i class="bi bi-check-circle-fill text-success me-1"></i> Siempre</span>
+                    </label>
+                    <label class="w-100">
+                        <input type="radio" name="disposition" value="Algunas veces" class="d-none">
+                        <span class="option-pill-label"><i class="bi bi-dash-circle-fill text-warning me-1"></i> A veces</span>
+                    </label>
+                    <label class="w-100">
+                        <input type="radio" name="disposition" value="No" class="d-none">
+                        <span class="option-pill-label"><i class="bi bi-x-circle-fill text-danger me-1"></i> No</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- PREGUNTA 5: RECOMENDACIÓN -->
+            <div class="question-block">
+                <label class="question-title">
+                    <span class="q-number">5</span>
+                    ¿Recomendarías la atención de este asesor?
+                </label>
+                <div class="option-card-group">
+                    <label class="w-100">
+                        <input type="radio" name="recommendation" value="Definitivamente sí" class="d-none" checked>
+                        <span class="option-pill-label"><i class="bi bi-hand-thumbs-up-fill text-success me-1"></i> ¡Sí, seguro!</span>
+                    </label>
+                    <label class="w-100">
+                        <input type="radio" name="recommendation" value="Tal vez" class="d-none">
+                        <span class="option-pill-label"><i class="bi bi-question-circle-fill text-warning me-1"></i> Tal vez</span>
+                    </label>
+                    <label class="w-100">
+                        <input type="radio" name="recommendation" value="No" class="d-none">
+                        <span class="option-pill-label"><i class="bi bi-hand-thumbs-down-fill text-danger me-1"></i> No</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- MENSAJE / COMENTARIO (OPCIONAL) -->
+            <div class="mb-3">
+                <label class="form-label fw-bold text-dark small mb-1" for="id_comments">
+                    <i class="bi bi-chat-heart-fill me-1 text-danger"></i> Mensaje o felicitación al asesor (Opcional):
+                </label>
+                {{ form.comments }}
+            </div>
+
+            <!-- ACORDEÓN DESPLEGABLE: IDENTIFICARSE ES 100% OPCIONAL -->
+            <div class="accordion mb-4" id="accordionClientData">
+                <div class="accordion-item border rounded-3 overflow-hidden">
+                    <h2 class="accordion-header" id="headingOne">
+                        <button class="accordion-button collapsed py-2 px-3 bg-light text-muted small fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                            <i class="bi bi-person-lines-fill me-2 text-danger"></i> ¿Deseas dejar tu nombre o contacto? (Opcional)
+                        </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#accordionClientData">
+                        <div class="accordion-body p-3">
+                            <p class="small text-muted mb-2">No es obligatorio. Solo si deseas que te contactemos para darte seguimiento a tu compra.</p>
+                            <div class="row g-2">
+                                <div class="col-sm-6">
+                                    <label class="small text-muted mb-1">Nombre completo</label>
+                                    {{ form.client_name }}
+                                </div>
+                                <div class="col-sm-6">
+                                    <label class="small text-muted mb-1">Celular / WhatsApp</label>
+                                    {{ form.client_phone }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTÓN DE ENVÍO -->
+            <button type="submit" class="btn btn-innovar btn-lg w-100 py-3 fs-5 shadow" {% if already_voted %}disabled style="opacity: 0.65; cursor: not-allowed;"{% endif %}>
+                <i class="bi bi-send-check-fill me-2"></i> {% if already_voted %}CALIFICACIÓN YA ENVIADA HOY{% else %}ENVIAR CALIFICACIÓN{% endif %}
+            </button>
+            <div class="text-center mt-3 text-muted small">
+                <i class="bi bi-shield-lock-fill text-success me-1"></i> Evaluación 100% segura &bull; Grupo Innovar Colombia
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Selector interactivo de estrellas
+    const stars = document.querySelectorAll('#starContainer i');
+    const starInput = document.getElementById('overall_star_input');
+    const starLabel = document.getElementById('starLabel');
+
+    const labels = {
+        1: "Atención Insatisfactoria (1/5)",
+        2: "Por mejorar (2/5)",
+        3: "Atención Aceptable (3/5)",
+        4: "Muy Buena Atención (4/5)",
+        5: "¡Excelente Servicio! (5/5)"
+    };
+
+    function updateStars(val) {
+        stars.forEach(star => {
+            const starVal = parseInt(star.getAttribute('data-val'));
+            if (starVal <= val) {
+                star.classList.remove('bi-star');
+                star.classList.add('bi-star-fill', 'star-active');
+            } else {
+                star.classList.remove('bi-star-fill', 'star-active');
+                star.classList.add('bi-star');
+            }
+        });
+        starLabel.textContent = labels[val] || `${val}/5`;
+        starInput.value = val;
+    }
+
+    stars.forEach(star => {
+        star.addEventListener('click', function() {
+            const val = parseInt(this.getAttribute('data-val'));
+            updateStars(val);
+        });
+    });
+
+    // En caso de que entre sin asesor fijado
+    const advisorSelect = document.getElementById('id_advisor');
+    const locationInput = document.getElementById('id_location');
+    if (advisorSelect && locationInput) {
+        advisorSelect.addEventListener('change', function() {
+            const selected = this.options[this.selectedIndex];
+            if (selected) {
+                locationInput.value = selected.getAttribute('data-location') || '';
+            }
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,312 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Dashboard Ejecutivo | GRUPO INNOVAR{% endblock %}
+
+{% block admin_content %}
+<div>
+    <!-- HEADER -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-2 border-bottom gap-3">
+        <div>
+            <h3 class="fw-bold mb-1" style="color: var(--innovar-dark);">Dashboard de Control y Calidad</h3>
+            <p class="text-muted small mb-0">Métricas consolidadas de servicio al cliente en Ibagué, Girardot y Neiva.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'qr_management' %}" class="btn btn-outline-dark d-flex align-items-center gap-2 rounded-pill btn-sm">
+                <i class="bi bi-qr-code"></i> Códigos QR
+            </a>
+            <a href="{% url 'export_evaluations_csv' %}" class="btn btn-innovar d-flex align-items-center gap-2 rounded-pill btn-sm">
+                <i class="bi bi-file-earmark-excel-fill"></i> Exportar Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- TARJETAS DE INDICADORES (KPIS) -->
+    <div class="row g-3 mb-4">
+        <!-- TOTAL ASESORES -->
+        <div class="col-sm-6 col-xl-2">
+            <div class="card-innovar p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Asesores</span>
+                    <span class="badge bg-light text-dark"><i class="bi bi-people-fill text-danger"></i></span>
+                </div>
+                <div class="h3 fw-bold mb-0">{{ total_advisors }}</div>
+                <small class="text-success fw-semibold"><i class="bi bi-check-circle-fill"></i> {{ active_advisors }} activos</small>
+            </div>
+        </div>
+
+        <!-- TOTAL EVALUACIONES -->
+        <div class="col-sm-6 col-xl-2">
+            <div class="card-innovar p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Evaluaciones</span>
+                    <span class="badge bg-light text-dark"><i class="bi bi-chat-heart-fill text-danger"></i></span>
+                </div>
+                <div class="h3 fw-bold mb-0">{{ total_evals }}</div>
+                <small class="text-muted">Total histórico</small>
+            </div>
+        </div>
+
+        <!-- EVALUACIONES ESTE MES -->
+        <div class="col-sm-6 col-xl-2">
+            <div class="card-innovar p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Este Mes</span>
+                    <span class="badge bg-light text-dark"><i class="bi bi-calendar-check-fill text-primary"></i></span>
+                </div>
+                <div class="h3 fw-bold mb-0 text-primary">{{ month_evals }}</div>
+                <small class="text-muted">En curso</small>
+            </div>
+        </div>
+
+        <!-- PROMEDIO SATISFACCIÓN -->
+        <div class="col-sm-6 col-xl-3">
+            <div class="card-innovar p-3 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Promedio General</span>
+                    <span class="badge bg-warning text-dark"><i class="bi bi-star-fill"></i></span>
+                </div>
+                <div class="h3 fw-bold mb-0 text-danger">{{ avg_rating }} <small class="fs-6 text-muted">/ 5.0</small></div>
+                <small class="text-muted">Ponderación global</small>
+            </div>
+        </div>
+
+        <!-- ÍNDICE DE SATISFACCIÓN -->
+        <div class="col-sm-12 col-xl-3">
+            <div class="card-innovar p-3 h-100" style="border-left: 5px solid #10B981;">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="text-muted small fw-bold text-uppercase">Índice Satisfacción</span>
+                    <span class="badge bg-success"><i class="bi bi-arrow-up-right"></i></span>
+                </div>
+                <div class="h3 fw-bold mb-0 text-success">{{ satisfaction_rate }}%</div>
+                <small class="text-muted">Meta corporativa: &gt; 85%</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- SEMÁFORO DE RIESGO Y ALERTAS DE PQRS (CASOS CRÍTICOS 1 Y 2 ESTRELLAS) -->
+    {% if critical_count > 0 %}
+    <div class="card border-0 shadow-sm rounded-4 mb-4 overflow-hidden" style="border-left: 6px solid #DC2626 !important; background: #FFF5F5;">
+        <div class="p-3 p-md-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger text-white" style="width: 44px; height: 44px; font-size: 1.3rem;">
+                        <i class="bi bi-exclamation-octagon-fill"></i>
+                    </span>
+                    <div>
+                        <h5 class="fw-bold text-danger mb-0">Centro de Alertas de Calidad & PQRS ({{ critical_count }} Casos Críticos)</h5>
+                        <p class="small text-muted mb-0">Clientes insatisfechos (1 o 2 estrellas) que requieren contacto inmediato para salvaguardar la reputación de la marca.</p>
+                    </div>
+                </div>
+                <span class="badge bg-danger text-white py-2 px-3 rounded-pill fw-bold">
+                    <i class="bi bi-bell-fill me-1"></i> Acción Inmediata Requerida
+                </span>
+            </div>
+
+            <div class="table-responsive bg-white rounded-3 border">
+                <table class="table table-hover align-middle mb-0 small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Asesor</th>
+                            <th>Sede</th>
+                            <th>Calificación</th>
+                            <th>Comentario del Cliente</th>
+                            <th>Contacto Cliente</th>
+                            <th class="text-end">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c_eval in critical_evals %}
+                        <tr>
+                            <td class="text-muted">{{ c_eval.created_at|date:"d/m/Y H:i" }}</td>
+                            <td class="fw-bold">{{ c_eval.advisor.full_name }}</td>
+                            <td>{{ c_eval.location.name }} <span class="badge bg-light text-dark">{{ c_eval.location.city }}</span></td>
+                            <td>
+                                <span class="badge bg-danger text-white">
+                                    {{ c_eval.overall_star }} ★ (Crítico)
+                                </span>
+                            </td>
+                            <td>
+                                {% if c_eval.comments %}
+                                <span class="text-dark fst-italic">"{{ c_eval.comments|truncatechars:70 }}"</span>
+                                {% else %}
+                                <span class="text-muted small">Sin comentario escrito</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if c_eval.client_name or c_eval.client_phone %}
+                                <strong>{{ c_eval.client_name|default:"Anónimo" }}</strong><br>
+                                <span class="text-muted">{{ c_eval.client_phone|default:"Sin teléfono" }}</span>
+                                {% else %}
+                                <span class="text-muted fst-italic">Calificación anónima</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if c_eval.client_phone %}
+                                <a href="https://wa.me/57{{ c_eval.client_phone }}?text=Hola%20{{ c_eval.client_name|urlencode }},%20te%20saludamos%20de%20la%20Direcci%C3%B3n%20de%20Servicio%20de%20Grupo%20Innovar.%20Lamentamos%20tu%20experiencia%20y%20deseamos%20brindarte%20una%20soluci%C3%B3n." target="_blank" class="btn btn-sm btn-outline-success rounded-pill">
+                                    <i class="bi bi-whatsapp"></i> Contactar
+                                </a>
+                                {% else %}
+                                <span class="badge bg-light text-muted">Auditar Asesor</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- SECCIÓN DE GRÁFICOS (CHART.JS) -->
+    <div class="row g-4 mb-5">
+        <div class="col-lg-5">
+            <div class="card-innovar p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0">Distribución de Calificaciones</h5>
+                    <small class="text-muted">1 a 5 estrellas</small>
+                </div>
+                <div style="position: relative; height: 260px;">
+                    <canvas id="starsChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="card-innovar p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0">Evaluaciones por Ciudad</h5>
+                    <small class="text-muted">Ibagué, Girardot y Neiva</small>
+                </div>
+                <div style="position: relative; height: 260px;">
+                    <canvas id="cityChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EVALUACIONES RECIENTES -->
+    <div class="card-innovar p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h5 class="fw-bold mb-0">Últimas Calificaciones Recibidas</h5>
+                <small class="text-muted">Registro en tiempo real desde los códigos QR de asesores y sedes</small>
+            </div>
+            <a href="{% url 'admin_evaluations' %}" class="btn btn-sm btn-outline-secondary rounded-pill">
+                Ver todas las evaluaciones <i class="bi bi-arrow-right ms-1"></i>
+            </a>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Asesor Evaluado</th>
+                        <th>Sede / Ciudad</th>
+                        <th class="text-center">⭐ Calificación</th>
+                        <th>Cliente</th>
+                        <th>Comentario</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ev in recent_evals %}
+                    <tr>
+                        <td class="text-nowrap small text-muted">
+                            {{ ev.created_at|date:"d/m/Y H:i" }}
+                        </td>
+                        <td>
+                            <a href="{% url 'advisor_detail' ev.advisor.id %}" class="fw-bold text-dark text-decoration-none">
+                                {{ ev.advisor.full_name }}
+                            </a>
+                        </td>
+                        <td>
+                            <div>{{ ev.location.name }}</div>
+                            <small class="text-muted"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ ev.location.city }}</small>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge {% if ev.overall_star >= 4 %}bg-warning text-dark{% else %}bg-secondary text-white{% endif %} fs-6 px-2">
+                                {{ ev.overall_star }} ★
+                            </span>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ ev.client_name|default:"Anónimo" }}</div>
+                            {% if ev.client_phone %}
+                            <small class="text-muted"><i class="bi bi-telephone me-1"></i>{{ ev.client_phone }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted" style="max-width: 280px;">
+                            {% if ev.comments %}
+                                <span class="d-inline-block text-truncate" style="max-width: 260px;" title="{{ ev.comments }}">
+                                    "{{ ev.comments }}"
+                                </span>
+                            {% else %}
+                                <em class="small text-black-50">Sin comentario</em>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">
+                            No hay evaluaciones registradas.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const starDistribution = {{ star_distribution|safe }};
+    const ctxStars = document.getElementById('starsChart').getContext('2d');
+    new Chart(ctxStars, {
+        type: 'doughnut',
+        data: {
+            labels: ['5 Estrellas', '4 Estrellas', '3 Estrellas', '2 Estrellas', '1 Estrella'],
+            datasets: [{
+                data: starDistribution,
+                backgroundColor: ['#FFB703', '#FB8500', '#64748B', '#94A3B8', '#D90429'],
+                borderWidth: 2,
+                borderColor: '#FFFFFF'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { font: { family: 'Montserrat', size: 12, weight: '600' } } }
+            },
+            cutout: '68%'
+        }
+    });
+
+    const cityLabels = {{ city_labels|safe }};
+    const cityCounts = {{ city_counts|safe }};
+    const ctxCity = document.getElementById('cityChart').getContext('2d');
+    new Chart(ctxCity, {
+        type: 'bar',
+        data: {
+            labels: cityLabels,
+            datasets: [{
+                label: 'Evaluaciones',
+                data: cityCounts,
+                backgroundColor: '#D90429',
+                borderRadius: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { precision: 0 } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+</script>
+{% endblock %}

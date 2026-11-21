@@ -1,0 +1,80 @@
+{% extends "admin_base.html" %}
+
+{% block title %}Configuración del Sistema | GRUPO INNOVAR{% endblock %}
+
+{% block admin_content %}
+<div style="max-width: 800px;">
+    <!-- HEADER -->
+    <div class="mb-4 pb-2 border-bottom">
+        <h3 class="fw-bold mb-1" style="color: var(--innovar-dark);">Configuración de Plataforma</h3>
+        <p class="text-muted small mb-0">Parámetros corporativos y operacionales de Grupo Innovar.</p>
+    </div>
+
+    <!-- TARJETA DE REGLAS DEL RANKING -->
+    <div class="card-innovar p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-sliders text-danger fs-4"></i>
+            Parámetros del Ranking Oficial
+        </h5>
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Umbral Mínimo de Evaluaciones</label>
+                <input type="number" class="form-control" value="5" readonly>
+                <small class="text-muted">Un asesor necesita al menos 5 evaluaciones válidas para ingresar al ranking oficial.</small>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-bold">Criterio de Ordenamiento Principal</label>
+                <input type="text" class="form-control" value="Promedio Ponderado de Estrellas (1 - 5)" readonly>
+                <small class="text-muted">Desempate automático por volumen de evaluaciones positivas.</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- TARJETA DE IDENTIDAD VISUAL -->
+    <div class="card-innovar p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-palette-fill text-danger fs-4"></i>
+            Identidad Corporativa
+        </h5>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label small fw-bold">Color Primario</label>
+                <div class="d-flex align-items-center gap-2">
+                    <div style="width: 32px; height: 32px; background: #D90429; border-radius: 8px;"></div>
+                    <span class="font-monospace fw-bold">#D90429</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold">Tipografía Oficial</label>
+                <div class="form-control" readonly>Montserrat (Google Fonts)</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small fw-bold">Organización</label>
+                <div class="form-control" readonly>Grupo Innovar Colombia</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TARJETA DE INFRAESTRUCTURA CLOUD -->
+    <div class="card-innovar p-4 mb-4">
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-cloud-check-fill text-success fs-4"></i>
+            Infraestructura Cloud y Base de Datos
+        </h5>
+        <ul class="list-group list-group-flush small">
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                <span>Motor de Base de Datos:</span>
+                <span class="fw-bold">PostgreSQL (Supabase Cloud)</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                <span>Proyecto Supabase:</span>
+                <span class="font-monospace text-muted">jbvpvipbecalkbephffr</span>
+            </li>
+            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                <span>Zona Horaria:</span>
+                <span class="fw-bold">America/Bogota (UTC-5)</span>
+            </li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}{% if evaluation and evaluation.overall_star <= 2 %}Atención Prioritaria | Grupo Innovar{% else %}¡Gracias por calificar nuestro servicio! | Grupo Innovar{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 600px;">
+    <div class="card-innovar p-4 p-md-5 text-center">
+
+        {% if evaluation and evaluation.overall_star <= 2 %}
+        <!-- CASO CRÍTICO: 1 O 2 ESTRELLAS (PQRS Y RETENCIÓN DE CLIENTE) -->
+        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mx-auto mb-4" style="width: 86px; height: 86px; background: #FEE2E2; color: #DC2626; font-size: 2.8rem; box-shadow: 0 10px 25px rgba(220, 38, 38, 0.2);">
+            <i class="bi bi-headset"></i>
+        </div>
+
+        <span class="badge bg-danger px-3 py-1 rounded-pill text-uppercase fw-bold mb-3"
+            style="font-size: 0.75rem; letter-spacing: 0.05em;">
+            Atención Prioritaria &bull; Calidad y Servicio
+        </span>
+
+        <h2 class="fw-bolder mb-3" style="color: var(--innovar-dark); letter-spacing: -0.03em;">
+            Lamentamos no haber cumplido tus expectativas
+        </h2>
+
+        <p class="lead text-muted mb-4" style="font-size: 1rem;">
+            En <strong>Grupo Innovar</strong> cada cliente es nuestra mayor prioridad. Queremos escuchar lo sucedido para corregirlo y brindarte la solución que mereces.
+        </p>
+
+        <!-- RESUMEN DE LA CALIFICACIÓN -->
+        <div class="p-3 rounded-4 bg-light border text-start mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Asesor evaluado:</span>
+                <span class="fw-bold">{{ evaluation.advisor.full_name }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Sede:</span>
+                <span class="fw-semibold">{{ evaluation.location.name }} ({{ evaluation.location.city }})</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted small">Calificación registrada:</span>
+                <span class="text-danger fw-bold fs-5">
+                    {% for _ in "x"|rjust:evaluation.overall_star %}★{% endfor %}
+                    <span class="text-dark small">({{ evaluation.overall_star }}/5)</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="d-flex flex-column gap-3">
+            <a href="https://wa.me/573100000000?text=Hola%20Grupo%20Innovar,%20acabo%20de%20calificar%20la%20atenci%C3%B3n%20en%20la%20sede%20{{ evaluation.location.name|urlencode }}%20con%20{{ evaluation.overall_star }}%20estrellas%20y%20deseo%20comunicarme%20con%20un%20supervisor." target="_blank" class="btn btn-danger btn-lg rounded-pill shadow d-flex align-items-center justify-content-center gap-2">
+                <i class="bi bi-whatsapp fs-5"></i> Hablar con Supervisor de Servicio
+            </a>
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary rounded-pill">
+                Volver al inicio
+            </a>
+        </div>
+
+        {% else %}
+        <!-- CASO SATISFACTORIO: 3 A 5 ESTRELLAS -->
+        <div class="d-inline-flex align-items-center justify-content-center rounded-circle mx-auto mb-4" style="width: 86px; height: 86px; background: #DCFCE7; color: #16A34A; font-size: 2.8rem; box-shadow: 0 10px 25px rgba(220, 38, 38, 0.15);">
+            <i class="bi bi-check-lg"></i>
+        </div>
+
+        <span class="badge bg-success px-3 py-1 rounded-pill text-uppercase fw-bold mb-3" style="font-size: 0.75rem; letter-spacing: 0.05em;">
+            Calificación Registrada con Éxito
+        </span>
+
+        <h2 class="fw-bolder mb-3" style="color: var(--innovar-dark); letter-spacing: -0.03em;">
+            ¡Gracias por calificar nuestro servicio!
+        </h2>
+
+        <p class="lead text-muted mb-4" style="font-size: 1.05rem;">
+            "Tu opinión es fundamental para que el equipo comercial de <strong>Grupo Innovar</strong> siga brindándote la mejor calidad y asesoría experta en construcción y remodelación."
+        </p>
+
+        <!-- RESUMEN DE LA CALIFICACIÓN ENVIADA -->
+        {% if evaluation %}
+        <div class="p-3 rounded-4 bg-light border text-start mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Asesor evaluado:</span>
+                <span class="fw-bold">{{ evaluation.advisor.full_name }}</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted small">Sede:</span>
+                <span class="fw-semibold">{{ evaluation.location.name }} ({{ evaluation.location.city }})</span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <span class="text-muted small">Tu calificación:</span>
+                <span class="text-warning fw-bold fs-5">
+                    {% for _ in "x"|rjust:evaluation.overall_star %}★{% endfor %}
+                    <span class="text-dark small">({{ evaluation.overall_star }}/5)</span>
+                </span>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="d-flex flex-column gap-2">
+            <a href="{% url 'ranking' %}" class="btn btn-innovar btn-lg rounded-pill shadow">
+                <i class="bi bi-trophy-fill me-1"></i> Ver Ranking de Asesores
+            </a>
+            <a href="{% url 'home' %}" class="btn btn-link text-muted text-decoration-none small">
+                Volver al inicio
+            </a>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+{% endblock %}

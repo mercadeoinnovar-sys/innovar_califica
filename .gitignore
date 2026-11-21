@@ -1,0 +1,12 @@
+.venv/
+.env
+.env.local
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+db.sqlite3
+db.sqlite3-journal
+media/qr_codes/
+.DS_Store
+*.log

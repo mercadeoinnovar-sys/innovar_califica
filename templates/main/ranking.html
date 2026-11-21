@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+
+{% block title %}Ranking Oficial de Asesores | GRUPO INNOVAR{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Estilos del podio de honor */
+    .podium-container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-end;
+        gap: 16px;
+        margin-bottom: 3.5rem;
+        padding-top: 2rem;
+    }
+
+    .podium-card {
+        background: #FFFFFF;
+        border-radius: 20px;
+        border: 1px solid var(--innovar-border);
+        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.07);
+        padding: 1.8rem 1.2rem;
+        text-align: center;
+        position: relative;
+        transition: all 0.25s ease;
+        flex: 1;
+        max-width: 320px;
+    }
+
+    .podium-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.12);
+    }
+
+    .podium-1st {
+        border-top: 6px solid var(--innovar-gold);
+        transform: translateY(-16px);
+        background: linear-gradient(180deg, #FFFFFF 0%, #FFFDF5 100%);
+    }
+
+    .podium-1st:hover {
+        transform: translateY(-22px);
+    }
+
+    .podium-2nd {
+        border-top: 6px solid var(--innovar-silver);
+    }
+
+    .podium-3rd {
+        border-top: 6px solid var(--innovar-bronze);
+    }
+
+    .medal-icon {
+        font-size: 2.4rem;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .avatar-podium {
+        width: 84px;
+        height: 84px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 800;
+        font-size: 1.9rem;
+        margin-bottom: 0.8rem;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Tabla de ranking */
+    .table-ranking {
+        background: #FFFFFF;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid var(--innovar-border);
+    }
+
+    .table-ranking th {
+        background: #F8FAFC;
+        font-weight: 700;
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #475569;
+        border-bottom: 2px solid var(--innovar-border);
+        padding: 1rem 1.2rem;
+    }
+
+    .table-ranking td {
+        padding: 1.1rem 1.2rem;
+        vertical-align: middle;
+        font-size: 0.95rem;
+        border-bottom: 1px solid #F1F5F9;
+    }
+
+    .progress-satisfaction {
+        height: 8px;
+        border-radius: 4px;
+        background: #E2E8F0;
+        overflow: hidden;
+    }
+
+    .progress-bar-satisfaction {
+        background: linear-gradient(90deg, #FFB703 0%, var(--innovar-red) 100%);
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+
+    <!-- HEADER DE LA SECCIÓN -->
+    <div class="section-header">
+        <div class="d-inline-flex align-items-center gap-2 px-3 py-1 mb-2 rounded-pill" style="background: var(--innovar-red-light); color: var(--innovar-red); font-size: 0.82rem; font-weight: 700;">
+            <i class="bi bi-stars"></i> Cuadro Oficial de Excelencia
+        </div>
+        <h1 class="section-title">RANKING OFICIAL DE ASESORES</h1>
+        <p class="section-subtitle">
+            "El reconocimiento es el resultado de un excelente servicio." Conoce a los asesores comerciales con mejor desempeño y mayor satisfacción de clientes.
+        </p>
+    </div>
+
+    <!-- BARRA DE FILTROS -->
+    <div class="card-innovar p-3 mb-5">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-md-3">
+                <label class="small text-muted fw-bold mb-1">Filtrar por Ciudad</label>
+                <select name="city" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Todas las Ciudades (Nacional)</option>
+                    {% for c in cities %}
+                    <option value="{{ c }}" {% if selected_city == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="small text-muted fw-bold mb-1">Filtrar por Sede</label>
+                <select name="location" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Todas las Sedes</option>
+                    {% for loc in locations %}
+                    <option value="{{ loc.id }}" {% if selected_location == loc.id|stringformat:"s" %}selected{% endif %}>
+                        {{ loc.name }} ({{ loc.city }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="small text-muted fw-bold mb-1">Período</label>
+                <select name="period" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="all" {% if selected_period == 'all' %}selected{% endif %}>Histórico Acumulado</option>
+                    <option value="month" {% if selected_period == 'month' %}selected{% endif %}>Mes en Curso</option>
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <a href="{% url 'ranking' %}" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="bi bi-x-circle me-1"></i> Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- PODIO DE LOS 3 PRIMEROS LUGARES -->
+    {% if podium %}
+    <div class="podium-container flex-wrap flex-md-nowrap">
+        <!-- SEGUNDO LUGAR (A la izquierda) -->
+        {% if podium|length >= 2 %}
+        {% with adv=podium.1 %}
+        <div class="podium-card podium-2nd order-2 order-md-1">
+            <span class="medal-icon">🥈</span>
+            <div class="avatar-podium" style="background: linear-gradient(135deg, #64748B 0%, #334155 100%);">
+                {{ adv.full_name|slice:":1" }}
+            </div>
+            <span class="badge bg-secondary mb-2">2° Lugar</span>
+            <h5 class="fw-bold mb-1">{{ adv.full_name }}</h5>
+            <p class="text-muted small mb-2">{{ adv.location.name }} &bull; {{ adv.location.city }}</p>
+            <div class="h4 fw-bolder text-warning mb-1">
+                <i class="bi bi-star-fill"></i> {{ adv.avg_star|floatformat:2 }}
+            </div>
+            <small class="text-muted d-block mb-3">Satisfacción: <strong>{{ adv.satisfaction_percentage }}%</strong> ({{ adv.eval_count }} eval.)</small>
+            <a href="{% url 'advisor_detail' adv.id %}" class="btn btn-sm btn-outline-dark rounded-pill px-3">Ver Perfil</a>
+        </div>
+        {% endwith %}
+        {% endif %}
+
+        <!-- PRIMER LUGAR (Al centro, más alto) -->
+        {% if podium|length >= 1 %}
+        {% with adv=podium.0 %}
+        <div class="podium-card podium-1st order-1 order-md-2">
+            <span class="medal-icon">🥇</span>
+            <div class="avatar-podium" style="background: linear-gradient(135deg, var(--innovar-red) 0%, #990000 100%); border: 3px solid var(--innovar-gold);">
+                {{ adv.full_name|slice:":1" }}
+            </div>
+            <span class="badge bg-warning text-dark fw-bold mb-2">👑 1° Lugar Absoluto</span>
+            <h4 class="fw-bold mb-1" style="color: var(--innovar-dark);">{{ adv.full_name }}</h4>
+            <p class="text-muted small mb-2">{{ adv.location.name }} &bull; {{ adv.location.city }}</p>
+            <div class="h3 fw-bolder mb-1" style="color: var(--innovar-red);">
+                <i class="bi bi-star-fill text-warning"></i> {{ adv.avg_star|floatformat:2 }}
+            </div>
+            <small class="text-muted d-block mb-3">Satisfacción: <strong class="text-success">{{ adv.satisfaction_percentage }}%</strong> ({{ adv.eval_count }} eval.)</small>
+            <a href="{% url 'advisor_detail' adv.id %}" class="btn btn-sm btn-innovar rounded-pill px-4 shadow">Ver Perfil</a>
+        </div>
+        {% endwith %}
+        {% endif %}
+
+        <!-- TERCER LUGAR (A la derecha) -->
+        {% if podium|length >= 3 %}
+        {% with adv=podium.2 %}
+        <div class="podium-card podium-3rd order-3 order-md-3">
+            <span class="medal-icon">🥉</span>
+            <div class="avatar-podium" style="background: linear-gradient(135deg, #B45309 0%, #78350F 100%);">
+                {{ adv.full_name|slice:":1" }}
+            </div>
+            <span class="badge mb-2 text-white" style="background: #B45309;">3° Lugar</span>
+            <h5 class="fw-bold mb-1">{{ adv.full_name }}</h5>
+            <p class="text-muted small mb-2">{{ adv.location.name }} &bull; {{ adv.location.city }}</p>
+            <div class="h4 fw-bolder text-warning mb-1">
+                <i class="bi bi-star-fill"></i> {{ adv.avg_star|floatformat:2 }}
+            </div>
+            <small class="text-muted d-block mb-3">Satisfacción: <strong>{{ adv.satisfaction_percentage }}%</strong> ({{ adv.eval_count }} eval.)</small>
+            <a href="{% url 'advisor_detail' adv.id %}" class="btn btn-sm btn-outline-dark rounded-pill px-3">Ver Perfil</a>
+        </div>
+        {% endwith %}
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- TABLA: RESTO DEL RANKING OFICIAL (MÍNIMO 5 EVALUACIONES) -->
+    <div class="mb-5">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h4 class="fw-bold mb-0">Ranking Oficial de Asesores</h4>
+            <span class="badge bg-light text-muted border">Mínimo 5 evaluaciones validadas</span>
+        </div>
+
+        <div class="table-responsive table-ranking shadow-sm">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 70px;" class="text-center">Pos.</th>
+                        <th>Asesor Comercial</th>
+                        <th>Sede / Ciudad</th>
+                        <th class="text-center">⭐ Calificación</th>
+                        <th style="min-width: 170px;">Satisfacción</th>
+                        <th class="text-center">Evaluaciones</th>
+                        <th class="text-end">Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for adv in rest_of_ranking %}
+                    <tr>
+                        <td class="text-center fw-bold text-muted">
+                            <span class="badge rounded-circle bg-light text-dark fs-6" style="width: 32px; height: 32px; line-height: 22px;">
+                                {{ forloop.counter|add:3 }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold" style="width: 42px; height: 42px; background: #334155; font-size: 1rem;">
+                                    {{ adv.full_name|slice:":1" }}
+                                </div>
+                                <div>
+                                    <a href="{% url 'advisor_detail' adv.id %}" class="fw-bold text-decoration-none text-dark hover-red">
+                                        {{ adv.full_name }}
+                                    </a>
+                                    <div class="small text-muted">{{ adv.position }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ adv.location.name }}</div>
+                            <small class="text-muted"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ adv.location.city }}</small>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge bg-warning text-dark fs-6 px-2 py-1">
+                                <i class="bi bi-star-fill me-1"></i>{{ adv.avg_star|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center justify-content-between small fw-bold mb-1">
+                                <span>Índice</span>
+                                <span>{{ adv.satisfaction_percentage }}%</span>
+                            </div>
+                            <div class="progress progress-satisfaction">
+                                <div class="progress-bar progress-bar-satisfaction" style="width: {{ adv.satisfaction_percentage }}%;"></div>
+                            </div>
+                        </td>
+                        <td class="text-center fw-bold">
+                            {{ adv.eval_count }}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'advisor_detail' adv.id %}" class="btn btn-sm btn-outline-danger rounded-pill">
+                                Ver Perfil
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                        {% if not podium %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                No se encontraron asesores con los filtros seleccionados o aún no cumplen el umbral de 5 evaluaciones.
+                            </td>
+                        </tr>
+                        {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SECCIÓN: ASESORES EN PROCESO (MENOS DE 5 EVALUACIONES) -->
+    {% if pending_advisors %}
+    <div class="card-innovar p-4 mb-5" style="background: #F8FAFC;">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-hourglass-split text-muted fs-4"></i>
+            <div>
+                <h5 class="fw-bold mb-0">Asesores en Proceso de Clasificación</h5>
+                <small class="text-muted">Colaboradores que aún no alcanzan las 5 evaluaciones requeridas para ingresar al ranking oficial.</small>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            {% for adv in pending_advisors %}
+            <div class="col-md-4 col-sm-6">
+                <div class="p-3 bg-white rounded-3 border d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold">{{ adv.full_name }}</div>
+                        <small class="text-muted">{{ adv.location.name }} &bull; {{ adv.eval_count }}/5 eval.</small>
+                    </div>
+                    <a href="{% url 'advisor_detail' adv.id %}" class="btn btn-sm btn-light border rounded-pill">
+                        Ver
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

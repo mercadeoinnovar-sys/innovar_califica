@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Perfil de {{ advisor.full_name }} | GRUPO INNOVAR{% endblock %}
+
+{% block content %}
+<div class="container py-3">
+
+    <!-- MENSAJE MOTIVACIONAL HERO -->
+    <div class="p-4 p-md-5 mb-4 rounded-4 text-white position-relative overflow-hidden shadow" style="background: linear-gradient(135deg, #111827 0%, #1F2937 60%, var(--innovar-red) 120%);">
+        <div class="row align-items-center g-4">
+            <div class="col-md-8">
+                <span class="badge bg-danger text-uppercase px-3 py-1 rounded-pill fw-bold mb-2" style="font-size: 0.75rem; letter-spacing: 0.05em;">
+                    <i class="bi bi-star-fill me-1"></i> Desempeño Comercial
+                </span>
+                <h1 class="display-6 fw-bold mb-1">{{ advisor.full_name }}</h1>
+                <p class="text-white-50 mb-3 fs-5">{{ advisor.position }} &bull; <strong>{{ advisor.location.name }}</strong> ({{ advisor.location.city }})</p>
+                
+                <!-- FRASES MOTIVACIONALES SEGÚN PROMEDIO -->
+                <div class="p-3 rounded-3 d-inline-flex align-items-center gap-2" style="background: rgba(255, 255, 255, 0.12); backdrop-filter: blur(8px);">
+                    <i class="bi bi-lightning-charge-fill text-warning fs-4"></i>
+                    <div>
+                        {% if advisor.average_rating and advisor.average_rating >= 4.5 %}
+                            <strong class="d-block text-white">"¡Tu excelente atención está dejando huella!"</strong>
+                            <small class="text-white-50">Sigue liderando con el ejemplo en Grupo Innovar.</small>
+                        {% elif advisor.average_rating and advisor.average_rating >= 4.0 %}
+                            <strong class="d-block text-white">"¡Vas por excelente camino!"</strong>
+                            <small class="text-white-50">Tus clientes reconocen tu compromiso y cercanía.</small>
+                        {% else %}
+                            <strong class="d-block text-white">"Cada cliente cuenta. Sigue mejorando."</strong>
+                            <small class="text-white-50">Cada interacción es una nueva oportunidad de brillar.</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- AVATAR / QR PREVIEW -->
+            <div class="col-md-4 text-center text-md-end">
+                {% if qr and qr.image %}
+                <div class="d-inline-block p-3 bg-white rounded-4 shadow">
+                    <img src="{{ qr.image.url }}" alt="QR {{ advisor.full_name }}" style="width: 120px; height: 120px;" class="d-block mx-auto mb-2">
+                    <small class="text-dark fw-bold d-block">Tu QR de Atención</small>
+                    <a href="{{ qr.image.url }}" download="QR_{{ advisor.identifier }}.png" class="btn btn-sm btn-outline-danger mt-1 rounded-pill">
+                        <i class="bi bi-download me-1"></i> Descargar
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- TARJETAS DE INDICADORES CLAVE (KPIS) -->
+    <div class="row g-4 mb-5">
+        <div class="col-sm-6 col-lg-3">
+            <div class="card-innovar p-4 text-center h-100">
+                <span class="text-muted small fw-bold text-uppercase d-block mb-1">Promedio Calificación</span>
+                <div class="display-5 fw-bolder mb-1" style="color: var(--innovar-red);">
+                    {{ advisor.average_rating|default:"N/A" }} <span class="fs-4 text-warning">★</span>
+                </div>
+                <small class="text-muted">Escala de 1 a 5 estrellas</small>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card-innovar p-4 text-center h-100">
+                <span class="text-muted small fw-bold text-uppercase d-block mb-1">Evaluaciones Recibidas</span>
+                <div class="display-5 fw-bolder text-dark mb-1">
+                    {{ advisor.evaluation_count }}
+                </div>
+                <small class="text-muted">Opiniones verificadas de clientes</small>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card-innovar p-4 text-center h-100">
+                <span class="text-muted small fw-bold text-uppercase d-block mb-1">Posición en Ranking</span>
+                <div class="display-5 fw-bolder mb-1 text-primary">
+                    {% if rank_position %}#{{ rank_position }}{% else %}<span class="fs-4 text-muted">En proceso</span>{% endif %}
+                </div>
+                <small class="text-muted">A nivel nacional</small>
+            </div>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+            <div class="card-innovar p-4 text-center h-100">
+                <span class="text-muted small fw-bold text-uppercase d-block mb-1">Satisfacción Neta</span>
+                <div class="display-5 fw-bolder text-success mb-1">
+                    {{ advisor.satisfaction_percentage }}%
+                </div>
+                <small class="text-muted">Índice positivo global</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-5">
+        <!-- INSIGNIAS Y RECONOCIMIENTOS -->
+        <div class="col-lg-5">
+            <div class="card-innovar p-4 h-100">
+                <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-award-fill text-danger fs-4"></i>
+                    Insignias y Reconocimientos
+                </h5>
+                {% if advisor.badges.all %}
+                <div class="d-flex flex-column gap-3">
+                    {% for badge in advisor.badges.all %}
+                    <div class="p-3 rounded-3 border d-flex align-items-center gap-3" style="background: #FFFDF9;">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 46px; height: 46px; background: {{ badge.color }}; font-size: 1.3rem; flex-shrink: 0;">
+                            <i class="bi {{ badge.icon }}"></i>
+                        </div>
+                        <div>
+                            <strong class="d-block text-dark">{{ badge.name }}</strong>
+                            <small class="text-muted">{{ badge.description }}</small>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-award fs-1 d-block mb-2 text-black-50"></i>
+                    <p class="mb-0">Aún acumulando evaluaciones para desbloquear insignias automáticas.</p>
+                </div>
+                {% endif %}
+
+                <!-- DESGLOSE DE ESTRELLAS -->
+                <div class="mt-4 pt-3 border-top">
+                    <h6 class="fw-bold mb-3">Distribución de Calificaciones</h6>
+                    {% for star, count in stars_breakdown.items %}
+                    <div class="d-flex align-items-center gap-2 mb-2 small">
+                        <span style="width: 45px;" class="fw-bold">{{ star }} ★</span>
+                        <div class="progress flex-grow-1" style="height: 8px;">
+                            <div class="progress-bar bg-warning" style="width: {% if advisor.evaluation_count %}{% widthratio count advisor.evaluation_count 100 %}{% else %}0{% endif %}%;"></div>
+                        </div>
+                        <span style="width: 35px;" class="text-end text-muted">{{ count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- COMENTARIOS Y OBSERVACIONES DE CLIENTES -->
+        <div class="col-lg-7">
+            <div class="card-innovar p-4 h-100">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-chat-quote-fill text-danger fs-4"></i>
+                        Comentarios de Clientes
+                    </h5>
+                    <span class="badge bg-light text-muted border">{{ evaluations.count }} opiniones</span>
+                </div>
+
+                {% if evaluations %}
+                <div class="d-flex flex-column gap-3 overflow-auto" style="max-height: 520px;">
+                    {% for ev in evaluations %}
+                    <div class="p-3 rounded-3 bg-light border">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <span class="fw-bold text-dark">{{ ev.client_name|default:"Cliente Verificado" }}</span>
+                                <small class="text-muted ms-2">&bull; {{ ev.created_at|date:"d M Y, H:i" }}</small>
+                            </div>
+                            <span class="badge bg-warning text-dark px-2 py-1">
+                                {{ ev.overall_star }} ★
+                            </span>
+                        </div>
+                        <p class="mb-1 text-muted" style="font-size: 0.95rem;">
+                            {% if ev.comments %}
+                                "{{ ev.comments }}"
+                            {% else %}
+                                <em>Sin comentario escrito (Calificación con estrellas).</em>
+                            {% endif %}
+                        </p>
+                        <div class="d-flex gap-2 flex-wrap small text-muted mt-2 pt-2 border-top">
+                            <span>Atención: <strong>{{ ev.attention_quality }}</strong></span> &bull;
+                            <span>Claridad: <strong>{{ ev.info_clarity }}</strong></span> &bull;
+                            <span>¿Recomienda?: <strong>{{ ev.recommendation }}</strong></span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="bi bi-chat-square-text fs-1 d-block mb-2"></i>
+                    Aún no registra comentarios de clientes.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ENLACE DE RETORNO -->
+    <div class="text-center">
+        <a href="{% url 'ranking' %}" class="btn btn-outline-secondary rounded-pill px-4">
+            <i class="bi bi-arrow-left me-1"></i> Volver al Ranking General
+        </a>
+    </div>
+
+</div>
+{% endblock %}

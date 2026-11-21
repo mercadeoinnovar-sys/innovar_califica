@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión Administrativa | GRUPO INNOVAR{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width: 460px;">
+    <div class="card-innovar p-4 p-md-5 text-center">
+        <!-- ISOTIPO GRUPO INNOVAR -->
+        <img src="/static/images/isotipo_innovar.png" alt="Grupo Innovar" style="height: 64px; width: auto; margin: 0 auto 1.2rem;">
+
+        <span class="badge bg-danger text-uppercase px-3 py-1 rounded-pill fw-bold mb-2" style="font-size: 0.72rem; letter-spacing: 0.05em;">
+            Acceso Restringido
+        </span>
+
+        <h3 class="fw-bold mb-1" style="color: var(--innovar-dark); letter-spacing: -0.02em;">Panel Administrativo</h3>
+        <p class="text-muted small mb-4">Ingresa con tus credenciales de Grupo Innovar para gestionar el sistema.</p>
+
+        {% if error %}
+        <div class="alert alert-danger rounded-3 py-2 small mb-3">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i> {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'admin_login' %}">
+            {% csrf_token %}
+            <div class="text-start mb-3">
+                <label class="form-label small fw-bold text-dark">Usuario / Correo</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-person-fill text-muted"></i></span>
+                    <input type="text" name="username" class="form-control border-start-0" placeholder="admin" required autofocus>
+                </div>
+            </div>
+
+            <div class="text-start mb-4">
+                <label class="form-label small fw-bold text-dark">Contraseña</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock-fill text-muted"></i></span>
+                    <input type="password" name="password" class="form-control border-start-0" placeholder="••••••••" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-innovar w-100 py-2 fs-6 mb-3 shadow">
+                <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar Sesión
+            </button>
+
+            <a href="{% url 'home' %}" class="btn btn-link text-muted text-decoration-none small">
+                <i class="bi bi-arrow-left me-1"></i> Volver a la página principal
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}
