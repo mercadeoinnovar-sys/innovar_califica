@@ -6,21 +6,21 @@
     <title>{% block title %}INNOVAR SERVICE | Grupo Innovar Colombia{% endblock %}</title>
 
     <!-- SEO META TAGS PRIMARIOS -->
-    <meta name="description" content="{% block meta_description %}Plataforma oficial de evaluación y satisfacción de Grupo Innovar Colombia. Consulta las calificaciones de servicio de Cerámicas San Lorenzo, Ferretería Innovar y Supermercado Cerámico en Ibagué, Girardot y Neiva.{% endblock %}">
-    <meta name="keywords" content="Grupo Innovar, Grupo Innovar Colombia, Cerámicas San Lorenzo Ibagué, Supermercado Cerámico, Ferretería Innovar, Ambientes Innovar, Líder Cerámico, acabados Ibagué, cerámicas Neiva, cerámicas Girardot, calificación asesores">
+    <meta name="description" content="{% block meta_description %}Plataforma oficial de evaluación y satisfacción de Grupo Innovar Colombia. Consulta las calificaciones de servicio de Cerámicas San Lorenzo, Ferretería Innovar y Supermercado Cerámico en Ibagué, Girardot, Neiva y Fusagasugá.{% endblock %}">
+    <meta name="keywords" content="Grupo Innovar, Grupo Innovar Colombia, Cerámicas San Lorenzo Ibagué, Supermercado Cerámico, Ferretería Innovar, Ambientes Innovar, Líder Cerámico, acabados Ibagué, cerámicas Neiva, cerámicas Girardot, cerámicas Fusagasugá, calificación asesores">
     <meta name="author" content="Grupo Innovar Colombia">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="{{ request.build_absolute_uri }}">
 
     <!-- FAVICON OFICIAL CON ISOTIPO ROMBO ROJO -->
-    <link rel="icon" type="image/png" href="/static/images/isotipo_innovar.png">
+    <link rel="icon" type="image/png" href="/static/images/isotipo_innovar_nuevo.png">
 
     <!-- OPEN GRAPH (PARA COMPARTIR EN WHATSAPP, FACEBOOK, LINKEDIN) -->
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Grupo Innovar Service">
     <meta property="og:url" content="{{ request.build_absolute_uri }}">
     <meta property="og:title" content="{% block og_title %}Grupo Innovar | Sistema de Calificación y Excelencia en Servicio{% endblock %}">
-    <meta property="og:description" content="{% block og_description %}Tu opinión es clave para Grupo Innovar. Califica la atención de nuestros asesores y consulta el ranking oficial en Ibagué, Girardot y Neiva.{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Tu opinión es clave para Grupo Innovar. Califica la atención de nuestros asesores y consulta el ranking oficial en Ibagué, Girardot, Neiva y Fusagasugá.{% endblock %}">
     <meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}/static/images/logo_grupo_innovar_vertical.png">
 
     <!-- TWITTER CARDS -->
@@ -236,10 +236,8 @@
     <!-- NAVBAR CORPORATIVO -->
     <nav class="navbar navbar-expand-lg navbar-innovar sticky-top">
         <div class="container">
-            <a class="navbar-brand-innovar" href="{% url 'home' %}">
-                <img src="/static/images/isotipo_innovar.png" alt="Grupo Innovar" style="height: 38px; width: auto; margin-right: 8px;">
-                <span>GRUPO</span><span style="color: var(--innovar-red); margin-left: 4px;">INNOVAR</span>
-                <span class="brand-badge">Service</span>
+            <a class="navbar-brand-innovar d-flex align-items-center" href="{% url 'home' %}">
+                <img src="/static/images/logo_grupo_innovar_transparente.png" alt="Grupo Innovar" style="height: 38px; width: auto;">
             </a>
 
             <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navInnovar" aria-controls="navInnovar" aria-expanded="false" aria-label="Navegación">
@@ -284,8 +282,7 @@
             <div class="row align-items-center gy-3">
                 <div class="col-lg-5 text-lg-start">
                     <div class="d-flex align-items-center justify-content-center justify-content-lg-start gap-2 mb-1">
-                        <img src="/static/images/isotipo_innovar.png" alt="Grupo Innovar" style="height: 24px;">
-                        <span class="fw-bold text-dark">GRUPO INNOVAR COLOMBIA</span>
+                        <img src="/static/images/logo_grupo_innovar_transparente.png" alt="Grupo Innovar" style="height: 28px; width: auto;">
                     </div>
                     <small class="text-muted d-block">Sistema Oficial de Evaluación de Calidad y Servicio Comercial en Mostrador.</small>
                 </div>
@@ -299,7 +296,7 @@
                         </a>
                     </div>
                     <small class="text-muted">
-                        &copy; 2026 <strong>Grupo Innovar</strong>. Puntos de venta autorizados en Ibagué, Girardot y Neiva.
+                        &copy; 2026 <strong>Grupo Innovar</strong>. Puntos de venta autorizados en Ibagué, Girardot, Neiva y Fusagasugá.
                     </small>
                 </div>
             </div>
@@ -312,7 +309,7 @@
             <div class="modal-content rounded-4 border-0 shadow">
                 <div class="modal-header border-bottom py-3" style="background: linear-gradient(135deg, #111827 0%, #1F2937 100%); color: white;">
                     <div class="d-flex align-items-center gap-2">
-                        <img src="/static/images/isotipo_innovar.png" alt="Grupo Innovar" style="height: 28px;">
+                        <img src="/static/images/logo_grupo_innovar_blanco.png" alt="Grupo Innovar" style="height: 26px; width: auto;">
                         <h5 class="modal-title fw-bold" id="modalHabeasDataLabel">Política de Tratamiento de Datos Personales</h5>
                     </div>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
@@ -321,13 +318,13 @@
                     <div class="alert alert-light border d-flex align-items-center gap-3 p-3 mb-3 rounded-3">
                         <i class="bi bi-shield-lock-fill text-danger fs-2 flex-shrink-0"></i>
                         <div>
-                            <strong class="text-dark">GRUPO INNOVAR COLOMBIA</strong> &bull; Ibagué &bull; Girardot &bull; Neiva<br>
+                            <strong class="text-dark">GRUPO INNOVAR COLOMBIA</strong> &bull; Ibagué &bull; Girardot &bull; Neiva &bull; Fusagasugá<br>
                             <small class="text-muted">Compromiso institucional de protección de datos en cumplimiento de la Ley Estatutaria 1581 de 2012, Decreto Reglamentario 1377 de 2013 y estándares internacionales ISO 9001 (Calidad) e ISO/IEC 27001 (Seguridad de la Información).</small>
                         </div>
                     </div>
 
                     <h6 class="fw-bold text-dark mt-3"><i class="bi bi-building me-1 text-danger"></i> 1. Responsable del Tratamiento</h6>
-                    <p>El responsable del tratamiento de los datos personales suministrados a través de la plataforma de evaluación y servicio es <strong>GRUPO INNOVAR</strong>, con sede principal en la ciudad de Ibagué (Tolima) y salas de venta en Girardot (Cundinamarca) y Neiva (Huila).</p>
+                    <p>El responsable del tratamiento de los datos personales suministrados a través de la plataforma de evaluación y servicio es <strong>GRUPO INNOVAR</strong>, con sede principal en la ciudad de Ibagué (Tolima) y salas de venta en Girardot, Neiva y Fusagasugá (Cundinamarca).</p>
 
                     <h6 class="fw-bold text-dark mt-3"><i class="bi bi-bullseye me-1 text-danger"></i> 2. Finalidades de la Recolección</h6>
                     <p>La información recolectada (calificación del servicio y datos de contacto opcionales como nombre o celular) se destina exclusivamente a:</p>
@@ -351,7 +348,7 @@
                     <p>Grupo Innovar adopta medidas técnicas de cifrado en tránsito, bases de datos seguras con control de acceso por roles, protección contra inyecciones y registros de auditoría para garantizar que la información de los clientes no sufra adulteración, pérdida, consulta o acceso no autorizado.</p>
 
                     <h6 class="fw-bold text-dark mt-3"><i class="bi bi-envelope-at-fill me-1 text-danger"></i> 5. Canales de Atención para Ejercicio de Habeas Data</h6>
-                    <p>Para consultas, peticiones de rectificación o supresión de datos, puede dirigirse al correo oficial: <strong class="text-danger">servicioalcliente@grupoinnovar.co</strong> o de forma física en cualquiera de nuestras 9 salas de venta en Ibagué, Girardot y Neiva.</p>
+                    <p>Para consultas, peticiones de rectificación o supresión de datos, puede dirigirse al correo oficial: <strong class="text-danger">servicioalcliente@grupoinnovar.co</strong> o de forma física en cualquiera de nuestras salas de venta en Ibagué, Girardot, Neiva y Fusagasugá.</p>
                 </div>
                 <div class="modal-footer border-top py-2">
                     <button type="button" class="btn btn-dark rounded-pill px-4" data-bs-dismiss="modal">Cerrar y Conforme</button>
