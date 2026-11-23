@@ -2,7 +2,7 @@
 
 {% block title %}Registro de Clientes & Pautas Publicitarias | GRUPO INNOVAR{% endblock %}
 
-{% block content %}
+{% block admin_content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
         <div class="d-flex align-items-center gap-2 mb-1">
@@ -112,78 +112,70 @@
     </form>
 </div>
 
-<!-- TABLA DE CLIENTES REGISTRADOS -->
+<!-- TABLA DE CLIENTES REGISTRADOS (DEDUPLICADOS AL 100%) -->
 <div class="card border-0 rounded-4 shadow-sm bg-white overflow-hidden">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
             <thead class="table-light">
                 <tr>
-                    <th class="ps-4">Fecha / Hora</th>
-                    <th>Cliente Registrado</th>
+                    <th class="ps-4">Última Interacción</th>
+                    <th>Cliente Único</th>
                     <th>Celular / WhatsApp</th>
                     <th>Ciudad & Sede</th>
-                    <th>Asesor Comercial</th>
-                    <th class="text-end">Monto Factura</th>
+                    <th class="text-center">Visitas</th>
+                    <th class="text-end">Compras Acumuladas</th>
                     <th class="text-center">Boletas Sorteo</th>
-                    <th class="text-center">Calificación</th>
                     <th class="text-center pe-4">Habeas Data</th>
                 </tr>
             </thead>
             <tbody>
-                {% for ev in evaluations %}
+                {% for c in clients %}
                 <tr>
                     <td class="ps-4 text-muted small">
-                        {{ ev.created_at|date:"d/m/Y" }}<br>
-                        <span style="font-size: 0.74rem;">{{ ev.created_at|date:"h:i A" }}</span>
+                        {{ c.last_seen|date:"d/m/Y" }}<br>
+                        <span style="font-size: 0.74rem;">{{ c.last_seen|date:"h:i A" }}</span>
                     </td>
                     <td>
-                        <strong class="text-dark d-block">{{ ev.client_name|default:"Cliente en Mostrador" }}</strong>
-                        {% if ev.invoice_number %}
-                            <small class="text-muted font-monospace" style="font-size: 0.72rem;">Factura: {{ ev.invoice_number }}</small>
+                        <strong class="text-dark d-block text-uppercase">{{ c.client_name }}</strong>
+                        {% if c.invoice_number %}
+                            <small class="text-muted font-monospace" style="font-size: 0.72rem;">Factura: {{ c.invoice_number }}</small>
                         {% endif %}
                     </td>
                     <td>
-                        {% if ev.client_phone %}
-                            <a href="https://wa.me/57{{ ev.client_phone|cut:' '|cut:'-'|cut:'+' }}?text=Hola%20{{ ev.client_name|urlencode }},%20te%20saludamos%20de%20Grupo%20Innovar." target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-2 py-0 d-inline-flex align-items-center gap-1 shadow-none">
-                                <i class="bi bi-whatsapp"></i> {{ ev.client_phone }}
-                            </a>
-                        {% else %}
-                            <span class="text-muted small">No registrado</span>
-                        {% endif %}
+                        <a href="https://wa.me/57{{ c.client_phone|cut:' '|cut:'-'|cut:'+' }}?text=Hola%20{{ c.client_name|urlencode }},%20te%20saludamos%20de%20Grupo%20Innovar." target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-2 py-0 d-inline-flex align-items-center gap-1 shadow-none fw-semibold font-monospace">
+                            <i class="bi bi-whatsapp"></i> {{ c.client_phone }}
+                        </a>
                     </td>
                     <td>
-                        <span class="badge bg-light text-dark border">{{ ev.location.city }}</span><br>
-                        <small class="text-muted">{{ ev.location.name }}</small>
+                        <span class="badge bg-light text-dark border">{{ c.city }}</span><br>
+                        <small class="text-muted">{{ c.location_name }}</small>
                     </td>
-                    <td>
-                        <span class="fw-semibold text-dark">{{ ev.advisor.full_name }}</span>
+                    <td class="text-center">
+                        <span class="badge rounded-pill bg-light text-dark border px-2 py-1 fw-bold">
+                            {{ c.total_visits }} visita{{ c.total_visits|pluralize:"s" }}
+                        </span>
                     </td>
                     <td class="text-end fw-bold">
-                        {% if ev.invoice_amount %}
-                            <span class="text-dark">${{ ev.invoice_amount|floatformat:0 }}</span>
+                        {% if c.total_sales > 0 %}
+                            <span class="text-dark">${{ c.total_sales|floatformat:0 }} COP</span>
                         {% else %}
-                            <span class="text-muted small">N/D</span>
+                            <span class="text-muted small">$0 COP</span>
                         {% endif %}
                     </td>
                     <td class="text-center">
-                        {% if ev.tickets_count > 0 %}
+                        {% if c.total_tickets > 0 %}
                             <span class="badge bg-danger rounded-pill px-2 py-1 fw-bold">
-                                {{ ev.tickets_count }} Boleta{{ ev.tickets_count|pluralize:"s" }}
+                                {{ c.total_tickets }} Boleta{{ c.total_tickets|pluralize:"s" }}
                             </span>
                             <div class="font-monospace text-muted mt-1" style="font-size: 0.7rem;">
-                                {{ ev.ticket_codes }}
+                                {{ c.ticket_codes }}
                             </div>
                         {% else %}
                             <span class="badge bg-light text-muted border" style="font-size: 0.72rem;">Sin boletas (< $1M)</span>
                         {% endif %}
                     </td>
-                    <td class="text-center">
-                        <span class="text-warning fw-bold">
-                            {% for _ in "x"|rjust:ev.overall_star %}★{% endfor %}
-                        </span>
-                    </td>
                     <td class="text-center pe-4">
-                        {% if ev.data_authorization %}
+                        {% if c.data_authorization %}
                             <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-1" style="font-size: 0.7rem;">
                                 <i class="bi bi-shield-check me-1"></i> Autorizado
                             </span>
@@ -194,7 +186,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="9" class="text-center py-5 text-muted">
+                    <td colspan="8" class="text-center py-5 text-muted">
                         <i class="bi bi-person-x fs-1 text-muted d-block mb-2"></i>
                         No se encontraron clientes registrados con los filtros aplicados.
                     </td>

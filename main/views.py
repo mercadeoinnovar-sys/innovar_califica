@@ -132,20 +132,49 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
             if already_voted:
                 form.add_error(None, "Ya has registrado una calificación para este asesor en las últimas 24 horas. ¡Agradecemos mucho tu valiosa opinión!")
             else:
-                evaluation = form.save(commit=False)
-                evaluation.location = evaluation.advisor.location
-                if not evaluation.client_city:
-                    evaluation.client_city = evaluation.advisor.location.city
-                evaluation.ip_address = client_ip
-                evaluation.session_key = session_key
+                phone = form.cleaned_data.get("client_phone")
+                now = timezone.now()
 
-                # Calificación de Asesor
-                evaluation.invoice_amount = None
-                evaluation.invoice_number = ""
-                evaluation.invoice_image = None
-                evaluation.tickets_count = 0
-                evaluation.ticket_codes = ""
-                evaluation.save()
+                # Control anti-redundancia: si el cliente califica varias veces en el mes, consolidar en 1 solo registro
+                existing_monthly = Evaluation.objects.filter(
+                    client_phone=phone,
+                    created_at__year=now.year,
+                    created_at__month=now.month,
+                    is_valid=True
+                ).first()
+
+                if existing_monthly:
+                    evaluation = existing_monthly
+                    evaluation.advisor = form.cleaned_data["advisor"]
+                    evaluation.location = form.cleaned_data["advisor"].location
+                    evaluation.client_name = form.cleaned_data["client_name"]
+                    evaluation.client_city = form.cleaned_data.get("client_city") or evaluation.location.city
+                    evaluation.attention_quality = form.cleaned_data["attention_quality"]
+                    evaluation.info_clarity = form.cleaned_data["info_clarity"]
+                    evaluation.product_knowledge = form.cleaned_data["product_knowledge"]
+                    evaluation.disposition = form.cleaned_data["disposition"]
+                    evaluation.recommendation = form.cleaned_data["recommendation"]
+                    evaluation.overall_star = form.cleaned_data["overall_star"]
+                    if form.cleaned_data.get("comments"):
+                        evaluation.comments = form.cleaned_data["comments"]
+                    evaluation.data_authorization = form.cleaned_data["data_authorization"]
+                    evaluation.ip_address = client_ip
+                    evaluation.session_key = session_key
+                    evaluation.created_at = now
+                    evaluation.save()
+                else:
+                    evaluation = form.save(commit=False)
+                    evaluation.location = evaluation.advisor.location
+                    if not evaluation.client_city:
+                        evaluation.client_city = evaluation.advisor.location.city
+                    evaluation.ip_address = client_ip
+                    evaluation.session_key = session_key
+                    evaluation.invoice_amount = None
+                    evaluation.invoice_number = ""
+                    evaluation.invoice_image = None
+                    evaluation.tickets_count = 0
+                    evaluation.ticket_codes = ""
+                    evaluation.save()
 
                 return render(request, "main/thank_you.html", {
                     "evaluation": evaluation,
@@ -187,22 +216,47 @@ def raffle_register(request):
     if request.method == "POST":
         form = RaffleRegistrationForm(request.POST)
         if form.is_valid():
-            entry = form.save(commit=False)
-            entry.client_city = entry.location.city if entry.location else ""
-            entry.ip_address = client_ip
-            entry.session_key = session_key
+            phone = form.cleaned_data.get("client_phone")
+            new_amount = form.cleaned_data["invoice_amount"]
+            now = timezone.now()
 
-            # Valores por defecto para campos de evaluación ya que es solo registro de factura
-            entry.attention_quality = "Excelente"
-            entry.info_clarity = "Sí, completamente"
-            entry.product_knowledge = "Sí"
-            entry.disposition = "Siempre"
-            entry.recommendation = "Definitivamente sí"
-            entry.overall_star = 5
-            entry.is_valid = True
-            entry.invoice_image = None
+            # Control anti-redundancia: 1 solo registro por cliente por mes, acumulando sus compras y boletas
+            existing_monthly = Evaluation.objects.filter(
+                client_phone=phone,
+                created_at__year=now.year,
+                created_at__month=now.month,
+                is_valid=True
+            ).first()
 
-            # Asignación de boletas: 1 boleta por cada $1'000.000 COP
+            if existing_monthly:
+                entry = existing_monthly
+                entry.client_name = form.cleaned_data["client_name"]
+                entry.location = form.cleaned_data["location"]
+                if form.cleaned_data.get("advisor"):
+                    entry.advisor = form.cleaned_data["advisor"]
+                entry.client_city = entry.location.city if entry.location else ""
+                prev_amount = entry.invoice_amount or 0
+                entry.invoice_amount = prev_amount + new_amount
+                if form.cleaned_data.get("invoice_number"):
+                    entry.invoice_number = form.cleaned_data["invoice_number"]
+                entry.ip_address = client_ip
+                entry.session_key = session_key
+                entry.created_at = now
+            else:
+                entry = form.save(commit=False)
+                entry.client_city = entry.location.city if entry.location else ""
+                entry.ip_address = client_ip
+                entry.session_key = session_key
+                entry.attention_quality = "Excelente"
+                entry.info_clarity = "Sí, completamente"
+                entry.product_knowledge = "Sí"
+                entry.disposition = "Siempre"
+                entry.recommendation = "Definitivamente sí"
+                entry.overall_star = 5
+                entry.is_valid = True
+                entry.invoice_image = None
+
+            # Asignación acumulada de boletas: 1 boleta por cada $1'000.000 COP
             if entry.invoice_amount and entry.invoice_amount >= 1000000:
                 entry.tickets_count = int(entry.invoice_amount // 1000000)
             else:
@@ -663,41 +717,77 @@ def export_evaluations_csv(request):
 
 @login_required(login_url='admin_login')
 def admin_clients(request):
-    """Módulo de Registro de Clientes para Pautas Publicitarias y Sorteos de Grupo Innovar."""
+    """Módulo de Registro de Clientes para Pautas Publicitarias y Sorteos de Grupo Innovar (Deduplicado por Celular)."""
     city_filter = request.GET.get("city", "")
     raffle_filter = request.GET.get("raffle", "")
     q = request.GET.get("q", "").strip()
 
-    evaluations = Evaluation.objects.filter(is_valid=True).exclude(client_phone="").select_related('advisor', 'location').order_by('-created_at')
+    qs = Evaluation.objects.filter(is_valid=True).exclude(client_phone="").select_related('advisor', 'location').order_by('-created_at')
 
     if city_filter:
-        evaluations = evaluations.filter(location__city=city_filter)
-
-    if raffle_filter == "con_boletas":
-        evaluations = evaluations.filter(tickets_count__gt=0)
-    elif raffle_filter == "sin_boletas":
-        evaluations = evaluations.filter(tickets_count=0)
+        qs = qs.filter(location__city=city_filter)
 
     if q:
-        evaluations = evaluations.filter(
+        qs = qs.filter(
             Q(client_name__icontains=q) |
             Q(client_phone__icontains=q) |
             Q(invoice_number__icontains=q) |
             Q(ticket_codes__icontains=q)
         )
 
-    total_clients = Evaluation.objects.filter(is_valid=True).exclude(client_phone="").count()
-    unique_phones = Evaluation.objects.filter(is_valid=True).exclude(client_phone="").values("client_phone").distinct().count()
-    raffle_clients = Evaluation.objects.filter(is_valid=True, tickets_count__gt=0).exclude(client_phone="").count()
-    total_sales = Evaluation.objects.filter(is_valid=True, invoice_amount__isnull=False).aggregate(total=Sum('invoice_amount'))['total'] or 0
+    # Consolidación y Deduplicación estricta por número celular: 1 sola fila por cliente único
+    clients_dict = {}
+    for ev in qs:
+        phone = ev.client_phone.strip()
+        if not phone:
+            continue
+        if phone not in clients_dict:
+            clients_dict[phone] = {
+                "client_name": ev.client_name or "Cliente en Mostrador",
+                "client_phone": phone,
+                "city": ev.location.city if ev.location else (ev.client_city or "Ibagué"),
+                "location_name": ev.location.name if ev.location else "Mostrador General",
+                "advisor_name": ev.advisor.full_name if ev.advisor else "Atención en Mostrador",
+                "total_visits": 1,
+                "total_sales": float(ev.invoice_amount or 0),
+                "total_tickets": ev.tickets_count,
+                "ticket_codes": ev.ticket_codes,
+                "invoice_number": ev.invoice_number,
+                "last_seen": ev.created_at,
+                "overall_star": ev.overall_star,
+                "data_authorization": ev.data_authorization,
+            }
+        else:
+            c = clients_dict[phone]
+            c["total_visits"] += 1
+            c["total_sales"] += float(ev.invoice_amount or 0)
+            c["total_tickets"] += ev.tickets_count
+            if ev.ticket_codes:
+                if c["ticket_codes"]:
+                    c["ticket_codes"] += ", " + ev.ticket_codes
+                else:
+                    c["ticket_codes"] = ev.ticket_codes
+            if ev.client_name and (not c["client_name"] or c["client_name"] == "Cliente en Mostrador"):
+                c["client_name"] = ev.client_name
 
-    # Lista de teléfonos únicos para copiar directo al administrador (Meta Ads / WhatsApp Broadcasts)
-    phone_list = [ev.client_phone.strip() for ev in evaluations if ev.client_phone and ev.client_phone.strip()]
-    phone_list_str = ", ".join(dict.fromkeys(phone_list))
+    unique_clients = list(clients_dict.values())
+
+    # Filtro por estado de sorteo sobre clientes únicos
+    if raffle_filter == "con_boletas":
+        unique_clients = [c for c in unique_clients if c["total_tickets"] > 0]
+    elif raffle_filter == "sin_boletas":
+        unique_clients = [c for c in unique_clients if c["total_tickets"] == 0]
+
+    total_clients = len(unique_clients)
+    unique_phones = len(unique_clients)
+    raffle_clients = sum(1 for c in unique_clients if c["total_tickets"] > 0)
+    total_sales = sum(c["total_sales"] for c in unique_clients)
+
+    phone_list_str = ", ".join(c["client_phone"] for c in unique_clients)
 
     return render(request, "main/admin_clients.html", {
         "active_tab": "clients",
-        "evaluations": evaluations,
+        "clients": unique_clients,
         "city_filter": city_filter,
         "raffle_filter": raffle_filter,
         "q": q,
@@ -712,42 +802,63 @@ def admin_clients(request):
 
 @login_required(login_url='admin_login')
 def export_clients_csv(request):
-    """Exportar base de datos de clientes para pautas publicitarias (Meta Ads, Google Ads, WhatsApp)."""
+    """Exportar base de datos de clientes deduplicada para pautas publicitarias (Meta Ads, Google Ads, WhatsApp)."""
     response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
-    response['Content-Disposition'] = 'attachment; filename="clientes_pautas_grupo_innovar.csv"'
+    response['Content-Disposition'] = 'attachment; filename="audiencia_pautas_grupo_innovar_unicos.csv"'
 
     writer = csv.writer(response)
     writer.writerow([
         "Nombre Cliente",
-        "Celular / WhatsApp",
-        "Ciudad",
-        "Sede Grupo Innovar",
-        "Asesor Atendió",
-        "Calificación (Estrellas)",
-        "Monto Compra (COP)",
-        "N° Factura",
-        "Boletas Sorteo",
+        "Celular / WhatsApp (Único)",
+        "Ciudad Principal",
+        "Sede Frecuente",
+        "Visitas Registradas",
+        "Total Compras Acumuladas (COP)",
+        "Total Boletas Sorteo",
         "Códigos Boletas",
-        "Fecha Registro",
+        "Última Interacción",
         "Autorización Habeas Data (Ley 1581)"
     ])
 
-    evaluations = Evaluation.objects.filter(is_valid=True).exclude(client_phone="").select_related('advisor', 'location').order_by('-created_at')
+    qs = Evaluation.objects.filter(is_valid=True).exclude(client_phone="").select_related('advisor', 'location').order_by('-created_at')
+    clients_dict = {}
+    for ev in qs:
+        phone = ev.client_phone.strip()
+        if not phone:
+            continue
+        if phone not in clients_dict:
+            clients_dict[phone] = {
+                "name": ev.client_name or "Cliente Registrado",
+                "phone": phone,
+                "city": ev.location.city if ev.location else "Ibagué",
+                "location": ev.location.name if ev.location else "General",
+                "visits": 1,
+                "sales": float(ev.invoice_amount or 0),
+                "tickets": ev.tickets_count,
+                "codes": ev.ticket_codes,
+                "last_seen": ev.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                "auth": "AUTORIZADO (Ley 1581 de 2012)" if ev.data_authorization else "NO"
+            }
+        else:
+            c = clients_dict[phone]
+            c["visits"] += 1
+            c["sales"] += float(ev.invoice_amount or 0)
+            c["tickets"] += ev.tickets_count
+            if ev.ticket_codes:
+                c["codes"] = (c["codes"] + ", " + ev.ticket_codes) if c["codes"] else ev.ticket_codes
 
-    for ev in evaluations:
+    for c in clients_dict.values():
         writer.writerow([
-            ev.client_name or "Cliente Registrado",
-            ev.client_phone,
-            ev.location.city,
-            ev.location.name,
-            ev.advisor.full_name,
-            ev.overall_star,
-            float(ev.invoice_amount) if ev.invoice_amount else 0,
-            ev.invoice_number or "N/D",
-            ev.tickets_count,
-            ev.ticket_codes or "Sin boletas",
-            ev.created_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "AUTORIZADO (Ley 1581 de 2012)" if ev.data_authorization else "NO"
+            c["name"],
+            c["phone"],
+            c["city"],
+            c["location"],
+            c["visits"],
+            c["sales"],
+            c["tickets"],
+            c["codes"] or "Sin boletas",
+            c["last_seen"],
+            c["auth"]
         ])
 
     return response
