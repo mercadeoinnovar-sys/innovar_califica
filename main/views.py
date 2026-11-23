@@ -10,7 +10,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from .models import Advisor, Evaluation, Location, Badge, QRCode
-from .forms import EvaluationForm, AdvisorForm
+from .forms import EvaluationForm, RaffleRegistrationForm, AdvisorForm
 
 
 def home(request):
@@ -139,27 +139,18 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
                 evaluation.ip_address = client_ip
                 evaluation.session_key = session_key
 
-                # No guardar archivos pesados de imagen en la base de datos para evitar saturación de almacenamiento
+                # Calificación de Asesor
+                evaluation.invoice_amount = None
+                evaluation.invoice_number = ""
                 evaluation.invoice_image = None
-
-                # Regla de Sorteo: 1 boleta por cada $1.000.000 COP
-                if evaluation.invoice_amount and evaluation.invoice_amount >= 1000000:
-                    evaluation.tickets_count = int(evaluation.invoice_amount // 1000000)
-                else:
-                    evaluation.tickets_count = 0
-                    evaluation.ticket_codes = ""
-
+                evaluation.tickets_count = 0
+                evaluation.ticket_codes = ""
                 evaluation.save()
-
-                # Generar números oficiales de boleta si califica para el sorteo
-                if evaluation.tickets_count > 0:
-                    codes = [f"INV-{evaluation.id:04d}-{i+1}" for i in range(evaluation.tickets_count)]
-                    evaluation.ticket_codes = ", ".join(codes)
-                    evaluation.save(update_fields=["ticket_codes"])
 
                 return render(request, "main/thank_you.html", {
                     "evaluation": evaluation,
-                    "advisor": evaluation.advisor
+                    "advisor": evaluation.advisor,
+                    "is_advisor_evaluation": True
                 })
     else:
         initial = {}
@@ -183,6 +174,57 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
         "advisors_list": advisors_list,
         "locations_list": locations_list,
         "already_voted": already_voted,
+    })
+
+
+def raffle_register(request):
+    """Módulo independiente para registrar facturas de compra y participar en sorteos de boletas."""
+    if not request.session.session_key:
+        request.session.save()
+    session_key = request.session.session_key
+    client_ip = get_client_ip(request)
+
+    if request.method == "POST":
+        form = RaffleRegistrationForm(request.POST)
+        if form.is_valid():
+            entry = form.save(commit=False)
+            entry.client_city = entry.location.city if entry.location else ""
+            entry.ip_address = client_ip
+            entry.session_key = session_key
+
+            # Valores por defecto para campos de evaluación ya que es solo registro de factura
+            entry.attention_quality = "Excelente"
+            entry.info_clarity = "Sí, completamente"
+            entry.product_knowledge = "Sí"
+            entry.disposition = "Siempre"
+            entry.recommendation = "Definitivamente sí"
+            entry.overall_star = 5
+            entry.is_valid = True
+            entry.invoice_image = None
+
+            # Asignación de boletas: 1 boleta por cada $1'000.000 COP
+            if entry.invoice_amount and entry.invoice_amount >= 1000000:
+                entry.tickets_count = int(entry.invoice_amount // 1000000)
+            else:
+                entry.tickets_count = 0
+
+            entry.save()
+
+            if entry.tickets_count > 0:
+                codes = [f"INV-{entry.id:04d}-{i+1}" for i in range(entry.tickets_count)]
+                entry.ticket_codes = ", ".join(codes)
+                entry.save(update_fields=["ticket_codes"])
+
+            return render(request, "main/thank_you.html", {
+                "evaluation": entry,
+                "advisor": entry.advisor,
+                "is_raffle_entry": True
+            })
+    else:
+        form = RaffleRegistrationForm()
+
+    return render(request, "main/raffle_register.html", {
+        "form": form
     })
 
 

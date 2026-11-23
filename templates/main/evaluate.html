@@ -432,7 +432,7 @@
                     </div>
                     <div>
                         <h6 class="fw-bold mb-0 text-dark">Tus Datos de Contacto <span class="badge bg-danger ms-1" style="font-size: 0.65rem;">OBLIGATORIO</span></h6>
-                        <small class="text-muted">Necesarios para registrar tus boletas, notificarte en sorteos y darte seguimiento comercial.</small>
+                        <small class="text-muted">Registro de cliente y verificación de autenticidad de la evaluación.</small>
                     </div>
                 </div>
 
@@ -442,12 +442,16 @@
                             <i class="bi bi-person-badge text-danger me-1"></i> Tu Nombre Completo *
                         </label>
                         {{ form.client_name }}
+                        <small class="text-muted" style="font-size: 0.72rem;">Se convertirá a MAYÚSCULAS automáticamente.</small>
                     </div>
                     <div class="col-sm-6">
                         <label class="form-label small fw-bold text-dark mb-1" for="id_client_phone">
-                            <i class="bi bi-whatsapp text-success me-1"></i> Celular / WhatsApp *
+                            <i class="bi bi-whatsapp text-success me-1"></i> Celular de Colombia *
                         </label>
                         {{ form.client_phone }}
+                        <div id="client_phone_feedback" class="small mt-1" style="font-size: 0.72rem; color: #64748B;">
+                            10 dígitos iniciando por 3 (ej: 3101234567). Sin letras ni símbolos.
+                        </div>
                     </div>
                 </div>
 
@@ -455,121 +459,23 @@
                 <div class="form-check mt-3 pt-2 border-top">
                     <input class="form-check-input" type="checkbox" name="data_authorization" id="id_data_authorization" value="true" checked required>
                     <label class="form-check-label small text-muted" for="id_data_authorization" style="font-size: 0.78rem;">
-                        Autorizo expresamente a <strong>Grupo Innovar Colombia</strong> para el tratamiento de mis datos personales y para recibir notificaciones sobre sorteos, promociones y pautas comerciales conforme a la <a href="#modalHabeasData" data-bs-toggle="modal" class="text-danger fw-semibold text-decoration-underline">Política de Privacidad y Habeas Data (Ley 1581 de 2012)</a>.
+                        Autorizo expresamente a <strong>Grupo Innovar Colombia</strong> para el tratamiento de mis datos personales conforme a la <a href="#modalHabeasData" data-bs-toggle="modal" class="text-danger fw-semibold text-decoration-underline">Política de Privacidad y Habeas Data (Ley 1581 de 2012)</a>.
                     </label>
                 </div>
             </div>
 
-            <!-- SECCIÓN: ESCANEAR FACTURA & PARTICIPAR EN SORTEOS DE GRUPO INNOVAR -->
-            <div class="card border-0 rounded-4 p-3 p-md-4 mb-4 shadow-sm" style="background: linear-gradient(135deg, #FFF1F2 0%, #FFFBEB 100%); border: 2px dashed #E11D48 !important;">
-                <div class="d-flex align-items-center gap-3 mb-2">
-                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle text-white shadow-sm flex-shrink-0" style="width: 48px; height: 48px; background: var(--innovar-red); font-size: 1.4rem;">
-                        <i class="bi bi-gift-fill"></i>
-                    </div>
+            <!-- INVITACIÓN AL SORTEO DE BOLETAS -->
+            <div class="alert alert-light border rounded-4 p-3 mb-4 d-flex align-items-center justify-content-between flex-wrap gap-2 shadow-xs" style="background: linear-gradient(135deg, #FFF1F2 0%, #FFFBEB 100%); border-color: rgba(225, 29, 72, 0.2) !important;">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-gift-fill text-danger fs-3"></i>
                     <div>
-                        <div class="d-flex align-items-center gap-2 mb-1">
-                            <span class="badge bg-danger text-uppercase px-2 py-1" style="font-size: 0.68rem; letter-spacing: 0.05em;">Sorteos Grupo Innovar</span>
-                            <span class="badge bg-warning text-dark px-2 py-1" style="font-size: 0.68rem; font-weight: 700;">1 Boleta x cada $1'000.000</span>
-                        </div>
-                        <h6 class="fw-bold mb-0 text-dark">¿Realizaste una compra hoy? ¡Escanea tu factura y gana boletas!</h6>
+                        <div class="fw-bold small text-dark">¿Hiciste una compra hoy?</div>
+                        <small class="text-muted" style="font-size: 0.76rem;">Registra tu factura física en el módulo de sorteos y reclama boletas oficiales.</small>
                     </div>
                 </div>
-
-                <p class="small text-muted mb-3" style="font-size: 0.85rem;">
-                    Por cada <strong>$1.000.000 COP</strong> en compras acumulas automáticamente <strong>1 boleta oficial</strong> para participar en sorteos de productos exclusivos de Grupo Innovar.
-                </p>
-
-                <!-- BOTÓN PARA ABRIR CÁMARA DEL TELÉFONO -->
-                <div class="mb-3">
-                    <div class="row g-2">
-                        <div class="col-12 col-sm-8">
-                            <button type="button" class="btn btn-danger btn-lg w-100 py-3 rounded-4 shadow-sm fw-bold d-flex align-items-center justify-content-center gap-2" id="btnSnapHighResDirect">
-                                <i class="bi bi-camera-fill fs-3"></i>
-                                <div class="text-start">
-                                    <span class="d-block lh-1">Tomar Foto con Cámara HD</span>
-                                    <small class="fw-normal text-white-50" style="font-size: 0.72rem;">Máxima nitidez con autofoco de tu teléfono</small>
-                                </div>
-                            </button>
-                        </div>
-                        <div class="col-12 col-sm-4">
-                            <button type="button" class="btn btn-outline-dark btn-lg w-100 py-3 rounded-4 shadow-sm fw-bold d-flex align-items-center justify-content-center gap-2" id="btnOpenLiveScanner">
-                                <i class="bi bi-upc-scan fs-4 text-danger"></i>
-                                <div class="text-start">
-                                    <span class="d-block lh-1" style="font-size: 0.9rem;">Visor en Vivo</span>
-                                    <small class="fw-normal text-muted" style="font-size: 0.7rem;">Escanear en pantalla</small>
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-                    <!-- Input nativo de cámara móvil con autofocus HDR -->
-                    <input type="file" accept="image/*" capture="environment" id="localCameraInput" class="d-none">
-                    <small class="text-muted d-block text-center mt-2" style="font-size: 0.78rem;">
-                        <i class="bi bi-magic text-danger me-1"></i> <strong>Lectura óptica 100% automática:</strong> Enfoca el total de la factura. El sistema detecta el valor exacto y calcula tus boletas al instante.
-                    </small>
-                </div>
-
-                <!-- CONTENEDOR DE LECTURA AUTOMÁTICA DEL TOTAL (SIN QUE EL CLIENTE DIGITE) -->
-                <div id="invoiceScanStatusBox" class="p-3 bg-white rounded-3 border mb-3 text-center">
-                    <div id="noScanYet">
-                        <div class="text-muted small">
-                            <i class="bi bi-upc-scan text-secondary me-1"></i> Factura física pendiente por escanear. Toca el botón rojo arriba para detectar el total automáticamente con tu cámara.
-                        </div>
-                    </div>
-                    <div id="scanDetectedBox" class="d-none text-start">
-                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                            <div>
-                                <span class="badge bg-success rounded-pill px-2 py-1 mb-1" style="font-size: 0.7rem;">
-                                    <i class="bi bi-check-circle-fill me-1"></i> Total Detectado por Escáner
-                                </span>
-                                <div class="h3 fw-bolder text-dark mb-0 font-monospace" id="displayScannedAmount">$0 COP</div>
-                                <small class="text-muted" style="font-size: 0.75rem;">Valor total leído automáticamente de tu factura física</small>
-                            </div>
-                            <div class="d-flex flex-column align-items-end gap-1">
-                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" id="btnRescan">
-                                    <i class="bi bi-arrow-repeat me-1"></i> Re-escanear
-                                </button>
-                                <button type="button" class="btn btn-sm btn-link text-muted p-0 text-decoration-underline" id="btnEditAmountManual" style="font-size: 0.74rem;">
-                                    Ajustar monto si falló algún dígito
-                                </button>
-                            </div>
-                        </div>
-                        <div id="manualEditBox" class="mt-2 d-none p-2 bg-light rounded-3 border">
-                            <label class="small fw-bold text-dark d-block mb-1">Ajustar valor total leído:</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text bg-white fw-bold">$</span>
-                                <input type="number" id="inputManualCorrection" class="form-control fw-bold" placeholder="Ej: 1350000">
-                                <button class="btn btn-success fw-bold" type="button" id="btnApplyManualCorrection">Guardar</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- CAMPO OCULTO QUE ALMACENA EL VALOR DETECTADO POR EL ESCÁNER -->
-                <input type="hidden" name="invoice_amount" id="id_invoice_amount" value="">
-                
-                <!-- NÚMERO DE FACTURA (OPCIONAL) -->
-                <div class="mb-2">
-                    <label class="form-label small text-muted mb-1" for="id_invoice_number">
-                        <i class="bi bi-receipt text-primary me-1"></i> Número consecutivo de factura (Opcional):
-                    </label>
-                    {{ form.invoice_number }}
-                </div>
-
-                <!-- INDICADOR EN VIVO DEL CÁLCULO DE BOLETAS -->
-                <div id="raffleResultBox" class="mt-3 p-3 rounded-3 bg-white border d-none">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-ticket-perforated-fill fs-2" id="raffleIcon" style="color: var(--innovar-red);"></i>
-                            <div>
-                                <span class="fw-bold d-block" id="raffleTitle" style="color: var(--innovar-dark);">Calculando...</span>
-                                <small class="text-muted" id="raffleSubtitle">Tus boletas se asignarán con tu nombre y celular</small>
-                            </div>
-                        </div>
-                        <span class="badge fs-5 px-3 py-2 rounded-pill shadow-sm" id="raffleBadge" style="background: var(--innovar-red);">
-                            0 Boletas
-                        </span>
-                    </div>
-                </div>
+                <a href="{% url 'raffle_register' %}" class="btn btn-sm btn-outline-danger rounded-pill fw-bold px-3">
+                    <i class="bi bi-ticket-perforated-fill me-1"></i> Ir a Boletas
+                </a>
             </div>
 
             <!-- BOTÓN DE ENVÍO CON ANTI DOBLE-CLIC (UX RESILIENTE) -->
@@ -584,66 +490,9 @@
         </form>
     </div>
 </div>
-
-<!-- MODAL ESCÁNER DE CÁMARA PARA FACTURAS -->
-<div class="modal fade" id="cameraScannerModal" tabindex="-1" aria-labelledby="cameraScannerModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
-            <div class="modal-header bg-dark text-white py-3">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-camera-fill text-danger fs-5"></i>
-                    <h6 class="modal-title fw-bold mb-0" id="cameraScannerModalLabel">Escanear Total de Factura</h6>
-                </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar" id="btnCloseScannerModal"></button>
-            </div>
-            <div class="modal-body p-3 text-center bg-black position-relative">
-                <!-- VIDEO LIVE STREAM -->
-                <div class="position-relative overflow-hidden rounded-3" style="max-height: 380px; min-height: 280px; background: #000;">
-                    <video id="cameraVideo" playsinline autoplay muted style="width: 100%; height: 100%; object-fit: cover;"></video>
-                    <!-- RETÍCULA DE ENFOQUE DEL TOTAL -->
-                    <div class="position-absolute top-50 start-50 translate-middle w-75 p-3 rounded-3" style="border: 2px dashed #00FF66; background: rgba(0, 255, 102, 0.08); pointer-events: none;">
-                        <span class="badge bg-dark bg-opacity-75 text-white fw-bold px-2 py-1" style="font-size: 0.72rem;">ENFOCA AQUÍ EL TOTAL $</span>
-                    </div>
-                    <canvas id="ocrCanvas" class="d-none"></canvas>
-                </div>
-
-                <div class="mt-3 text-white">
-                    <p class="small text-white-50 mb-2">Apunta la cámara al total pagado de tu factura física.</p>
-                    <div class="d-flex flex-column align-items-center gap-2">
-                        <button type="button" class="btn btn-danger btn-lg rounded-pill px-4 shadow fw-bold" id="btnCaptureFrame">
-                            <i class="bi bi-upc-scan me-1"></i> Capturar y Detectar Total
-                        </button>
-                        <button type="button" class="btn btn-outline-light btn-sm rounded-pill px-3" id="btnSnapHighRes">
-                            <i class="bi bi-camera-fill me-1"></i> O tomar foto nítida con tu cámara
-                        </button>
-                        <div id="ocrScanningStatus" class="small text-warning fw-semibold d-none mt-1">
-                            <span class="spinner-border spinner-border-sm me-2"></span><span id="ocrStatusText">Leyendo números reales de tu factura...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer bg-light p-3 border-0">
-                <div class="w-100">
-                    <small class="fw-bold text-muted d-block mb-2 text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">
-                        Valores comunes de compra (1 toque sin digitar):
-                    </small>
-                    <div class="d-flex flex-wrap gap-1">
-                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="1000000">$1'000.000</button>
-                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="1500000">$1'500.000</button>
-                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="2000000">$2'000.000</button>
-                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="3000000">$3'000.000</button>
-                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="5000000">$5'000.000</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
-<!-- TESSERACT OCR CLIENT-SIDE (LECTURA DE NÚMEROS REALES DE FACTURA) -->
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
     // Selector interactivo de estrellas
     const stars = document.querySelectorAll('#starContainer i');
@@ -698,6 +547,69 @@
             }
         });
     }
+
+    // CONTROL ESTRICTO DE CAMPOS: MAYÚSCULAS AUTOMÁTICAS Y CELULAR COLOMBIANO
+    const clientNameInput = document.getElementById('id_client_name');
+    const clientPhoneInput = document.getElementById('id_client_phone');
+    const phoneFeedback = document.getElementById('client_phone_feedback');
+
+    // 1. Mayúsculas automáticas en el nombre mientras el cliente escribe
+    if (clientNameInput) {
+        clientNameInput.addEventListener('input', function() {
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            this.value = this.value.toUpperCase();
+            this.setSelectionRange(start, end);
+        });
+    }
+
+    // 2. Validación de Celular de Colombia (10 dígitos, empieza por 3, sin letras ni símbolos)
+    if (clientPhoneInput) {
+        clientPhoneInput.addEventListener('input', function() {
+            // Eliminar inmediatamente cualquier caracter que no sea dígito
+            let digits = this.value.replace(/\D/g, '');
+
+            // Si pegan con prefijo +57 o 57, removerlo
+            if (digits.startsWith('57') && digits.length > 10) {
+                digits = digits.substring(2);
+            }
+
+            // Limitar a máximo 10 dígitos numéricos
+            if (digits.length > 10) {
+                digits = digits.substring(0, 10);
+            }
+
+            this.value = digits;
+
+            // Validación visual interactiva
+            if (digits.length === 0) {
+                this.classList.remove('is-valid', 'is-invalid');
+                if (phoneFeedback) {
+                    phoneFeedback.textContent = '10 dígitos iniciando por 3 (ej: 3101234567). Sin letras ni símbolos.';
+                    phoneFeedback.style.color = '#64748B';
+                }
+            } else if (digits.length === 10 && digits.startsWith('3')) {
+                this.classList.remove('is-invalid');
+                this.classList.add('is-valid');
+                if (phoneFeedback) {
+                    phoneFeedback.textContent = '✓ Celular de Colombia correcto (10 dígitos)';
+                    phoneFeedback.style.color = '#16A34A';
+                }
+            } else {
+                this.classList.remove('is-valid');
+                this.classList.add('is-invalid');
+                if (phoneFeedback) {
+                    if (!digits.startsWith('3')) {
+                        phoneFeedback.textContent = '⚠ El celular en Colombia debe comenzar por 3 (ej: 310...)';
+                    } else {
+                        phoneFeedback.textContent = `⚠ Número incompleto: llevas ${digits.length}/10 dígitos`;
+                    }
+                    phoneFeedback.style.color = '#DC2626';
+                }
+            }
+        });
+    }
+
     // Anti doble-clic y spinner de carga en envío (ISO 27001 / Resiliencia Móvil)
     const form = document.getElementById('evalForm');
     const submitBtn = document.getElementById('submitBtn');
@@ -706,6 +618,17 @@
 
     if (form && submitBtn) {
         form.addEventListener('submit', function(e) {
+            // Verificar celular antes de enviar
+            if (clientPhoneInput) {
+                const digits = clientPhoneInput.value.replace(/\D/g, '');
+                if (digits.length !== 10 || !digits.startsWith('3')) {
+                    e.preventDefault();
+                    clientPhoneInput.focus();
+                    alert("Por favor ingresa un número celular válido de Colombia (10 dígitos comenzando por 3, ej: 3101234567).");
+                    return false;
+                }
+            }
+
             if (submitBtn.getAttribute('data-submitting') === 'true') {
                 e.preventDefault();
                 return false;
@@ -721,428 +644,6 @@
             }
             form.submit();
         });
-    }
-
-    // Control del Escáner de Facturas por Cámara (Zero-Storage / Lectura OCR Real Optimizada)
-    const btnSnapHighResDirect = document.getElementById('btnSnapHighResDirect');
-    const btnOpenLiveScanner = document.getElementById('btnOpenLiveScanner');
-    const cameraScannerModalEl = document.getElementById('cameraScannerModal');
-    const cameraVideo = document.getElementById('cameraVideo');
-    const btnCaptureFrame = document.getElementById('btnCaptureFrame');
-    const btnSnapHighRes = document.getElementById('btnSnapHighRes');
-    const ocrScanningStatus = document.getElementById('ocrScanningStatus');
-    const ocrStatusText = document.getElementById('ocrStatusText');
-    const ocrCanvas = document.getElementById('ocrCanvas');
-    const localCameraInput = document.getElementById('localCameraInput');
-    const noScanYet = document.getElementById('noScanYet');
-    const scanDetectedBox = document.getElementById('scanDetectedBox');
-    const displayScannedAmount = document.getElementById('displayScannedAmount');
-    const btnRescan = document.getElementById('btnRescan');
-    const btnEditAmountManual = document.getElementById('btnEditAmountManual');
-    const manualEditBox = document.getElementById('manualEditBox');
-    const inputManualCorrection = document.getElementById('inputManualCorrection');
-    const btnApplyManualCorrection = document.getElementById('btnApplyManualCorrection');
-    const invoiceAmountInput = document.getElementById('id_invoice_amount');
-    const raffleResultBox = document.getElementById('raffleResultBox');
-    const raffleTitle = document.getElementById('raffleTitle');
-    const raffleSubtitle = document.getElementById('raffleSubtitle');
-    const raffleBadge = document.getElementById('raffleBadge');
-
-    let cameraStream = null;
-    let cameraModalInstance = null;
-
-    if (cameraScannerModalEl) {
-        cameraModalInstance = new bootstrap.Modal(cameraScannerModalEl);
-        cameraScannerModalEl.addEventListener('hidden.bs.modal', function () {
-            stopCamera();
-        });
-    }
-
-    function stopCamera() {
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(track => track.stop());
-            cameraStream = null;
-        }
-    }
-
-    function applyScannedTotal(amount) {
-        const num = parseInt(amount) || 0;
-        if (num <= 0) return;
-        if (invoiceAmountInput) invoiceAmountInput.value = num;
-        if (noScanYet) noScanYet.classList.add('d-none');
-        if (scanDetectedBox) scanDetectedBox.classList.remove('d-none');
-        if (manualEditBox) manualEditBox.classList.add('d-none');
-        if (displayScannedAmount) {
-            displayScannedAmount.textContent = '$' + num.toLocaleString('es-CO') + ' COP';
-        }
-        if (inputManualCorrection) inputManualCorrection.value = num;
-        updateRaffleCalculation();
-        
-        // Feedback háptico en móviles
-        if (navigator.vibrate) {
-            try { navigator.vibrate([60, 40, 80]); } catch(e) {}
-        }
-    }
-
-    if (btnRescan) {
-        btnRescan.addEventListener('click', function() {
-            if (localCameraInput) localCameraInput.click();
-        });
-    }
-
-    if (btnEditAmountManual && manualEditBox) {
-        btnEditAmountManual.addEventListener('click', function() {
-            manualEditBox.classList.toggle('d-none');
-            if (!manualEditBox.classList.contains('d-none') && inputManualCorrection) {
-                inputManualCorrection.focus();
-            }
-        });
-    }
-
-    if (btnApplyManualCorrection && inputManualCorrection) {
-        btnApplyManualCorrection.addEventListener('click', function() {
-            const val = parseInt(inputManualCorrection.value);
-            if (val > 0) {
-                applyScannedTotal(val);
-            }
-        });
-    }
-
-    // Botones rápidos de montos frecuentes
-    document.querySelectorAll('.quick-amount-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const amt = this.getAttribute('data-amt');
-            applyScannedTotal(amt);
-            if (cameraModalInstance) cameraModalInstance.hide();
-            stopCamera();
-        });
-    });
-
-    // Opción 1: Disparo directo con cámara nativa HD (Autofocus + Macro + Alta Resolución)
-    if (btnSnapHighResDirect && localCameraInput) {
-        btnSnapHighResDirect.addEventListener('click', function() {
-            localCameraInput.click();
-        });
-    }
-
-    if (btnSnapHighRes && localCameraInput) {
-        btnSnapHighRes.addEventListener('click', function() {
-            stopCamera();
-            if (cameraModalInstance) cameraModalInstance.hide();
-            localCameraInput.click();
-        });
-    }
-
-    // Opción 2: Visor en vivo con stream de video
-    if (btnOpenLiveScanner) {
-        btnOpenLiveScanner.addEventListener('click', function() {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                if (cameraModalInstance) cameraModalInstance.show();
-                if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
-                if (btnCaptureFrame) btnCaptureFrame.disabled = false;
-                navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: { ideal: 'environment' },
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    }
-                }).then(stream => {
-                    cameraStream = stream;
-                    if (cameraVideo) cameraVideo.srcObject = stream;
-                }).catch(err => {
-                    console.warn('Acceso a video stream no disponible, abriendo cámara directa:', err);
-                    if (cameraModalInstance) cameraModalInstance.hide();
-                    if (localCameraInput) localCameraInput.click();
-                });
-            } else if (localCameraInput) {
-                localCameraInput.click();
-            }
-        });
-    }
-
-    // Preprocesamiento de alto contraste optimizado para recibos térmicos colombianos
-    function preprocessInvoiceImage(canvas) {
-        const ctx = canvas.getContext('2d');
-        const width = canvas.width;
-        const height = canvas.height;
-        const imgData = ctx.getImageData(0, 0, width, height);
-        const data = imgData.data;
-
-        // 1. Calcular histograma y umbral Otsu adaptativo para separar texto negro de papel blanco/gris
-        const histogram = new Array(256).fill(0);
-        const totalPixels = width * height;
-
-        for (let i = 0; i < data.length; i += 4) {
-            // Luminancia perceptual ITU-R BT.601
-            const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
-            histogram[gray]++;
-        }
-
-        // Algoritmo de Otsu para umbral óptimo
-        let sum = 0;
-        for (let t = 0; t < 256; t++) sum += t * histogram[t];
-        let sumB = 0;
-        let wB = 0;
-        let wF = 0;
-        let varMax = 0;
-        let threshold = 128;
-
-        for (let t = 0; t < 256; t++) {
-            wB += histogram[t];
-            if (wB === 0) continue;
-            wF = totalPixels - wB;
-            if (wF === 0) break;
-            sumB += t * histogram[t];
-            const mB = sumB / wB;
-            const mF = (sum - sumB) / wF;
-            const varBetween = wB * wF * (mB - mF) * (mB - mF);
-            if (varBetween > varMax) {
-                varMax = varBetween;
-                threshold = t;
-            }
-        }
-
-        // Asegurar que el umbral esté en rango razonable para papel térmico
-        if (threshold < 80) threshold = 95;
-        if (threshold > 175) threshold = 160;
-
-        // 2. Aplicar Binarización limpia (texto negro puro 0, fondo blanco puro 255)
-        for (let i = 0; i < data.length; i += 4) {
-            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-            const val = gray <= threshold ? 0 : 255;
-            data[i] = val;
-            data[i + 1] = val;
-            data[i + 2] = val;
-        }
-
-        ctx.putImageData(imgData, 0, 0);
-    }
-
-    // Algoritmo de extracción de totales reales de facturas POS / Electrónicas de Colombia
-    function extractInvoiceTotalFromText(rawText) {
-        if (!rawText) return null;
-        console.log("=== TEXTO DETECTADO POR OCR ===");
-        console.log(rawText);
-
-        const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-        const candidates = [];
-
-        // Palabras clave de totales en Colombia
-        const highPriorityKeywords = /(total\s*a\s*pagar|total\s*factura|valor\s*total|neto\s*a\s*pagar|total\s*venta|total\s*general|gran\s*total|valor\s*a\s*pagar|total\s*recibo)/i;
-        const mediumPriorityKeywords = /(total|pagar|neto|cobrar|efectivo|saldo|pagado|importe|venta)/i;
-        const excludeKeywords = /(nit|tel|cel|fecha|hora|subtotal|iva|cambio|base|tarifa|autoventa|resoluc|dian|prefijo)/i;
-
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i];
-            
-            // Inspecciona la línea actual y la línea siguiente (habitual cuando "TOTAL" está arriba y el número abajo)
-            let combined = line;
-            if (i + 1 < lines.length) {
-                combined = line + ' ' + lines[i + 1];
-            }
-
-            const isHighPriority = highPriorityKeywords.test(combined);
-            const isMediumPriority = mediumPriorityKeywords.test(combined);
-            const isExcluded = excludeKeywords.test(line) && !isHighPriority;
-
-            // Normalización para OCR: corregir sustituciones comunes de dígitos en tickets
-            // Ej: "TOTAL $ 1.45O.OOO" -> "TOTAL $ 1.450.000"
-            let normalized = combined
-                .replace(/([0-9\.,\$])\s*[oO]([0-9\.,])/g, '$10$2')
-                .replace(/([0-9\.,\$])\s*[lI]([0-9\.,])/g, '$11$2')
-                .replace(/([0-9\.,\$])\s*[sS]([0-9\.,])/g, '$15$2');
-
-            // Regex exhaustiva para detectar montos en pesos colombianos ($1.250.000, 1.250.000, 1,250,000, 1250000, etc.)
-            const matches = normalized.match(/(?:\$|\b)\s*(\d{1,3}(?:[.,']\d{3})*(?:[.,]\d{2})?|\d{5,9})\b/g);
-
-            if (matches) {
-                matches.forEach(m => {
-                    let clean = m.replace(/[^\d.,']/g, '').replace(/'/g, '').trim();
-                    if (!clean) return;
-
-                    // Descartar decimales de centavos (ej: ,00 o .00)
-                    if (clean.includes('.') && clean.split('.').pop().length === 2) {
-                        clean = clean.substring(0, clean.lastIndexOf('.'));
-                    } else if (clean.includes(',') && clean.split(',').pop().length === 2) {
-                        clean = clean.substring(0, clean.lastIndexOf(','));
-                    }
-
-                    // Remover separadores de miles
-                    const num = parseInt(clean.replace(/[.,]/g, ''), 10);
-
-                    // Filtrar montos razonables de compras de acabados y materiales ($20.000 a $500.000.000 COP)
-                    // Y descartar años tipo 2024, 2025, 2026, 2027
-                    if (num >= 20000 && num <= 500000000 && num !== 2024 && num !== 2025 && num !== 2026 && num !== 2027) {
-                        let score = 10;
-                        if (isHighPriority) score = 150;
-                        else if (isMediumPriority) score = 80;
-                        else if (isExcluded) score = 5;
-
-                        // Si el número está en el tercio inferior del texto, dar bonificación (habitual para totales)
-                        if (i > lines.length * 0.5) score += 20;
-
-                        candidates.push({ amount: num, score: score, rawLine: combined });
-                    }
-                });
-            }
-        }
-
-        if (candidates.length === 0) return null;
-
-        // Ordenar candidatos: primero los de mayor puntuación contextual (TOTAL A PAGAR), y a igualdad el monto más alto
-        candidates.sort((a, b) => b.score - a.score || b.amount - a.amount);
-        console.log("Candidatos de total detectados:", candidates);
-        return candidates[0].amount;
-    }
-
-    // Ejecución de Tesseract OCR con doble pasada optimizada
-    function runRealOCR(sourceCanvas) {
-        if (typeof Tesseract === 'undefined') {
-            console.warn('Tesseract OCR no cargado en la página.');
-            return;
-        }
-
-        if (ocrScanningStatus) {
-            ocrScanningStatus.classList.remove('d-none');
-            if (ocrStatusText) ocrStatusText.textContent = 'Enfocando números reales de tu factura...';
-        }
-
-        // Redimensionar canvas si la imagen original es masiva (optimización de velocidad y nitidez)
-        let procCanvas = sourceCanvas;
-        const maxDim = 1800;
-        if (sourceCanvas.width > maxDim || sourceCanvas.height > maxDim) {
-            const scale = Math.min(maxDim / sourceCanvas.width, maxDim / sourceCanvas.height);
-            procCanvas = document.createElement('canvas');
-            procCanvas.width = Math.round(sourceCanvas.width * scale);
-            procCanvas.height = Math.round(sourceCanvas.height * scale);
-            const pctx = procCanvas.getContext('2d');
-            pctx.imageSmoothingQuality = 'high';
-            pctx.drawImage(sourceCanvas, 0, 0, procCanvas.width, procCanvas.height);
-        }
-
-        // Aplicar preprocesamiento de contraste adaptativo
-        preprocessInvoiceImage(procCanvas);
-
-        Tesseract.recognize(procCanvas, 'spa+eng', {
-            logger: m => {
-                if (m.status === 'recognizing text' && ocrStatusText) {
-                    const pct = Math.round((m.progress || 0) * 100);
-                    ocrStatusText.textContent = `Leyendo factura: ${pct}%...`;
-                }
-            }
-        }).then(({ data: { text } }) => {
-            stopCamera();
-            if (cameraModalInstance) cameraModalInstance.hide();
-            if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
-            if (btnCaptureFrame) btnCaptureFrame.disabled = false;
-
-            const extractedTotal = extractInvoiceTotalFromText(text);
-            if (extractedTotal) {
-                applyScannedTotal(extractedTotal);
-            } else {
-                // Si el recorte completo no dio alta certeza, intentar segunda pasada en el 45% inferior
-                tryBottomCropOCR(procCanvas);
-            }
-        }).catch(err => {
-            console.error('Error en OCR:', err);
-            stopCamera();
-            if (cameraModalInstance) cameraModalInstance.hide();
-            if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
-            if (btnCaptureFrame) btnCaptureFrame.disabled = false;
-            // Fallback amigable
-            const promptVal = prompt("Ingresa el total que aparece en tu factura (COP):", "1250000");
-            if (promptVal) {
-                applyScannedTotal(parseInt(promptVal.replace(/\D/g, ''), 10) || 0);
-            }
-        });
-    }
-
-    // Segunda pasada enfocada en el tercio inferior del ticket (donde siempre está el Total)
-    function tryBottomCropOCR(sourceCanvas) {
-        try {
-            const cropCanvas = document.createElement('canvas');
-            const startY = Math.round(sourceCanvas.height * 0.50);
-            const cropHeight = sourceCanvas.height - startY;
-            cropCanvas.width = sourceCanvas.width;
-            cropCanvas.height = cropHeight;
-            const cctx = cropCanvas.getContext('2d');
-            cctx.drawImage(sourceCanvas, 0, startY, sourceCanvas.width, cropHeight, 0, 0, cropCanvas.width, cropHeight);
-
-            Tesseract.recognize(cropCanvas, 'spa+eng').then(({ data: { text } }) => {
-                const subTotal = extractInvoiceTotalFromText(text);
-                if (subTotal) {
-                    applyScannedTotal(subTotal);
-                } else {
-                    const promptVal = prompt("No se leyó el número automáticamente con suficiente nitidez. Por favor confirma el valor total de tu factura física (COP):", "1500000");
-                    if (promptVal) {
-                        applyScannedTotal(parseInt(promptVal.replace(/\D/g, ''), 10) || 0);
-                    }
-                }
-            }).catch(() => {
-                const promptVal = prompt("Por favor confirma el total de tu factura (COP):", "1000000");
-                if (promptVal) applyScannedTotal(parseInt(promptVal.replace(/\D/g, ''), 10) || 0);
-            });
-        } catch(e) {
-            console.warn('Recorte inferior falló:', e);
-        }
-    }
-
-    // Captura desde el stream de video en pantalla
-    if (btnCaptureFrame) {
-        btnCaptureFrame.addEventListener('click', function() {
-            btnCaptureFrame.disabled = true;
-            if (cameraVideo && ocrCanvas) {
-                const ctx = ocrCanvas.getContext('2d');
-                ocrCanvas.width = cameraVideo.videoWidth || 1280;
-                ocrCanvas.height = cameraVideo.videoHeight || 720;
-                ctx.drawImage(cameraVideo, 0, 0, ocrCanvas.width, ocrCanvas.height);
-                runRealOCR(ocrCanvas);
-            }
-        });
-    }
-
-    // Captura desde cámara nativa móvil en alta resolución
-    if (localCameraInput) {
-        localCameraInput.addEventListener('change', function(e) {
-            if (this.files && this.files[0]) {
-                const file = this.files[0];
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0);
-                    runRealOCR(canvas);
-                };
-                img.src = URL.createObjectURL(file);
-            }
-        });
-    }
-
-    function updateRaffleCalculation() {
-        if (!invoiceAmountInput || !raffleResultBox) return;
-        const raw = parseFloat(invoiceAmountInput.value) || 0;
-        if (raw >= 1000000) {
-            const tickets = Math.floor(raw / 1000000);
-            raffleResultBox.classList.remove('d-none');
-            raffleTitle.innerHTML = `🎉 ¡Genial! Tu compra califica con <strong>${tickets} boleta${tickets > 1 ? 's' : ''}</strong>`;
-            raffleSubtitle.textContent = "Tus boletas oficiales se registrarán automáticamente con tu nombre y celular.";
-            raffleBadge.className = 'badge fs-5 px-3 py-2 rounded-pill shadow-sm bg-success text-white';
-            raffleBadge.textContent = `${tickets} Boleta${tickets > 1 ? 's' : ''}`;
-        } else if (raw > 0 && raw < 1000000) {
-            raffleResultBox.classList.remove('d-none');
-            raffleTitle.innerHTML = `<span class="text-secondary">Monto registrado: $${raw.toLocaleString('es-CO')} COP</span>`;
-            raffleSubtitle.textContent = "El monto mínimo para recibir boletas del sorteo es de $1'000.000 COP.";
-            raffleBadge.className = 'badge fs-6 px-3 py-2 rounded-pill bg-light text-muted border';
-            raffleBadge.textContent = "Sin boletas acumuladas";
-        } else {
-            raffleResultBox.classList.add('d-none');
-        }
-    }
-
-    if (invoiceAmountInput) {
-        invoiceAmountInput.addEventListener('input', updateRaffleCalculation);
     }
 </script>
 {% endblock %}

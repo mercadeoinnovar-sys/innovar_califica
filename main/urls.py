@@ -11,6 +11,10 @@ urlpatterns = [
     path('evaluar/sede/<int:location_id>/', views.evaluate_location_direct, name='evaluate_location_direct'),
     path('evaluate/', views.evaluate, name='evaluate'),
 
+    # Módulo de Sorteos & Boletas de Facturas (Independiente)
+    path('boletas/', views.raffle_register, name='raffle_register'),
+    path('sorteo/', views.raffle_register, name='raffle_alias'),
+
     # Módulo de Ranking & Asesor
     path('ranking/', views.ranking, name='ranking'),
     path('advisor/<int:advisor_id>/', views.advisor_detail, name='advisor_detail'),

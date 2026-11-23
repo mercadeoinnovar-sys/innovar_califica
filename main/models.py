@@ -67,7 +67,7 @@ class Evaluation(models.Model):
     client_phone = models.CharField(max_length=30, blank=True)
     client_city = models.CharField(max_length=100, blank=True)
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="evaluations")
-    advisor = models.ForeignKey(Advisor, on_delete=models.PROTECT, related_name="evaluations")
+    advisor = models.ForeignKey(Advisor, on_delete=models.SET_NULL, null=True, blank=True, related_name="evaluations")
 
     # Preguntas de evaluación
     attention_quality = models.CharField(
