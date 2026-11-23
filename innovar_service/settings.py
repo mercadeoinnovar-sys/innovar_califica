@@ -68,15 +68,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'innovar_service.wsgi.application'
 
-# BASE DE DATOS: SUPABASE POSTGRESQL EN LA NUBE
+# BASE DE DATOS: SUPABASE POSTGRESQL EN LA NUBE (CONEXIÓN POOLER IPV4 PARA VERCEL Y SERVERLESS)
 DATABASES = {
     'default': {
         'ENGINE': os.getenv('DB_ENGINE', 'django.db.backends.postgresql'),
         'NAME': os.getenv('DB_NAME', 'postgres'),
-        'USER': os.getenv('DB_USER', 'postgres'),
+        'USER': os.getenv('DB_USER', 'postgres.jbvpvipbecalkbephffr'),
         'PASSWORD': os.getenv('DB_PASSWORD', '12344rwwedfd'),
-        'HOST': os.getenv('DB_HOST', 'db.jbvpvipbecalkbephffr.supabase.co'),
+        'HOST': os.getenv('DB_HOST', 'aws-1-us-east-1.pooler.supabase.com'),
         'PORT': os.getenv('DB_PORT', '5432'),
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
     }
 }
 
