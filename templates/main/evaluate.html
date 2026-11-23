@@ -481,14 +481,30 @@
 
                 <!-- BOTÓN PARA ABRIR CÁMARA DEL TELÉFONO -->
                 <div class="mb-3">
-                    <button type="button" class="btn btn-danger btn-lg w-100 py-3 rounded-4 shadow-sm fw-bold d-flex align-items-center justify-content-center gap-2" id="btnOpenInvoiceCamera">
-                        <i class="bi bi-camera-fill fs-4"></i>
-                        <span>Abrir Cámara y Escanear Total de Factura</span>
-                    </button>
-                    <!-- Input fallback nativo para captura directa si el dispositivo lo prefiere -->
+                    <div class="row g-2">
+                        <div class="col-12 col-sm-8">
+                            <button type="button" class="btn btn-danger btn-lg w-100 py-3 rounded-4 shadow-sm fw-bold d-flex align-items-center justify-content-center gap-2" id="btnSnapHighResDirect">
+                                <i class="bi bi-camera-fill fs-3"></i>
+                                <div class="text-start">
+                                    <span class="d-block lh-1">Tomar Foto con Cámara HD</span>
+                                    <small class="fw-normal text-white-50" style="font-size: 0.72rem;">Máxima nitidez con autofoco de tu teléfono</small>
+                                </div>
+                            </button>
+                        </div>
+                        <div class="col-12 col-sm-4">
+                            <button type="button" class="btn btn-outline-dark btn-lg w-100 py-3 rounded-4 shadow-sm fw-bold d-flex align-items-center justify-content-center gap-2" id="btnOpenLiveScanner">
+                                <i class="bi bi-upc-scan fs-4 text-danger"></i>
+                                <div class="text-start">
+                                    <span class="d-block lh-1" style="font-size: 0.9rem;">Visor en Vivo</span>
+                                    <small class="fw-normal text-muted" style="font-size: 0.7rem;">Escanear en pantalla</small>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Input nativo de cámara móvil con autofocus HDR -->
                     <input type="file" accept="image/*" capture="environment" id="localCameraInput" class="d-none">
-                    <small class="text-muted d-block text-center mt-1" style="font-size: 0.74rem;">
-                        <i class="bi bi-magic text-danger me-1"></i> Lectura óptica automática: la cámara lee el total de tu factura y calcula tus boletas sin que tengas que digitar nada.
+                    <small class="text-muted d-block text-center mt-2" style="font-size: 0.78rem;">
+                        <i class="bi bi-magic text-danger me-1"></i> <strong>Lectura óptica 100% automática:</strong> Enfoca el total de la factura. El sistema detecta el valor exacto y calcula tus boletas al instante.
                     </small>
                 </div>
 
@@ -707,8 +723,9 @@
         });
     }
 
-    // Control del Escáner de Facturas por Cámara (Zero-Storage / Lectura OCR Real)
-    const btnOpenInvoiceCamera = document.getElementById('btnOpenInvoiceCamera');
+    // Control del Escáner de Facturas por Cámara (Zero-Storage / Lectura OCR Real Optimizada)
+    const btnSnapHighResDirect = document.getElementById('btnSnapHighResDirect');
+    const btnOpenLiveScanner = document.getElementById('btnOpenLiveScanner');
     const cameraScannerModalEl = document.getElementById('cameraScannerModal');
     const cameraVideo = document.getElementById('cameraVideo');
     const btnCaptureFrame = document.getElementById('btnCaptureFrame');
@@ -760,11 +777,16 @@
         }
         if (inputManualCorrection) inputManualCorrection.value = num;
         updateRaffleCalculation();
+        
+        // Feedback háptico en móviles
+        if (navigator.vibrate) {
+            try { navigator.vibrate([60, 40, 80]); } catch(e) {}
+        }
     }
 
     if (btnRescan) {
         btnRescan.addEventListener('click', function() {
-            if (btnOpenInvoiceCamera) btnOpenInvoiceCamera.click();
+            if (localCameraInput) localCameraInput.click();
         });
     }
 
@@ -786,15 +808,7 @@
         });
     }
 
-    if (btnSnapHighRes && localCameraInput) {
-        btnSnapHighRes.addEventListener('click', function() {
-            stopCamera();
-            if (cameraModalInstance) cameraModalInstance.hide();
-            localCameraInput.click();
-        });
-    }
-
-    // Botones de valores rápidos (acceso inmediato)
+    // Botones rápidos de montos frecuentes
     document.querySelectorAll('.quick-amount-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const amt = this.getAttribute('data-amt');
@@ -804,60 +818,170 @@
         });
     });
 
-    if (btnOpenInvoiceCamera) {
-        btnOpenInvoiceCamera.addEventListener('click', function() {
+    // Opción 1: Disparo directo con cámara nativa HD (Autofocus + Macro + Alta Resolución)
+    if (btnSnapHighResDirect && localCameraInput) {
+        btnSnapHighResDirect.addEventListener('click', function() {
+            localCameraInput.click();
+        });
+    }
+
+    if (btnSnapHighRes && localCameraInput) {
+        btnSnapHighRes.addEventListener('click', function() {
+            stopCamera();
+            if (cameraModalInstance) cameraModalInstance.hide();
+            localCameraInput.click();
+        });
+    }
+
+    // Opción 2: Visor en vivo con stream de video
+    if (btnOpenLiveScanner) {
+        btnOpenLiveScanner.addEventListener('click', function() {
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                cameraModalInstance.show();
+                if (cameraModalInstance) cameraModalInstance.show();
                 if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
-                btnCaptureFrame.disabled = false;
-                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-                    .then(stream => {
-                        cameraStream = stream;
-                        cameraVideo.srcObject = stream;
-                    })
-                    .catch(err => {
-                        console.warn('Acceso directo a cámara no disponible:', err);
-                        if (localCameraInput) localCameraInput.click();
-                    });
+                if (btnCaptureFrame) btnCaptureFrame.disabled = false;
+                navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    }
+                }).then(stream => {
+                    cameraStream = stream;
+                    if (cameraVideo) cameraVideo.srcObject = stream;
+                }).catch(err => {
+                    console.warn('Acceso a video stream no disponible, abriendo cámara directa:', err);
+                    if (cameraModalInstance) cameraModalInstance.hide();
+                    if (localCameraInput) localCameraInput.click();
+                });
             } else if (localCameraInput) {
                 localCameraInput.click();
             }
         });
     }
 
-    // Algoritmo inteligente de extracción de números de facturas colombianas
+    // Preprocesamiento de alto contraste optimizado para recibos térmicos colombianos
+    function preprocessInvoiceImage(canvas) {
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        const imgData = ctx.getImageData(0, 0, width, height);
+        const data = imgData.data;
+
+        // 1. Calcular histograma y umbral Otsu adaptativo para separar texto negro de papel blanco/gris
+        const histogram = new Array(256).fill(0);
+        const totalPixels = width * height;
+
+        for (let i = 0; i < data.length; i += 4) {
+            // Luminancia perceptual ITU-R BT.601
+            const gray = Math.round(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+            histogram[gray]++;
+        }
+
+        // Algoritmo de Otsu para umbral óptimo
+        let sum = 0;
+        for (let t = 0; t < 256; t++) sum += t * histogram[t];
+        let sumB = 0;
+        let wB = 0;
+        let wF = 0;
+        let varMax = 0;
+        let threshold = 128;
+
+        for (let t = 0; t < 256; t++) {
+            wB += histogram[t];
+            if (wB === 0) continue;
+            wF = totalPixels - wB;
+            if (wF === 0) break;
+            sumB += t * histogram[t];
+            const mB = sumB / wB;
+            const mF = (sum - sumB) / wF;
+            const varBetween = wB * wF * (mB - mF) * (mB - mF);
+            if (varBetween > varMax) {
+                varMax = varBetween;
+                threshold = t;
+            }
+        }
+
+        // Asegurar que el umbral esté en rango razonable para papel térmico
+        if (threshold < 80) threshold = 95;
+        if (threshold > 175) threshold = 160;
+
+        // 2. Aplicar Binarización limpia (texto negro puro 0, fondo blanco puro 255)
+        for (let i = 0; i < data.length; i += 4) {
+            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+            const val = gray <= threshold ? 0 : 255;
+            data[i] = val;
+            data[i + 1] = val;
+            data[i + 2] = val;
+        }
+
+        ctx.putImageData(imgData, 0, 0);
+    }
+
+    // Algoritmo de extracción de totales reales de facturas POS / Electrónicas de Colombia
     function extractInvoiceTotalFromText(rawText) {
         if (!rawText) return null;
-        console.log("OCR Texto Extraído:", rawText);
+        console.log("=== TEXTO DETECTADO POR OCR ===");
+        console.log(rawText);
 
-        const lines = rawText.split('\n');
+        const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
         const candidates = [];
-        const totalKeywords = /(total|pagar|neto|valor|cobrar|importe|venta|pesos|cop)/i;
+
+        // Palabras clave de totales en Colombia
+        const highPriorityKeywords = /(total\s*a\s*pagar|total\s*factura|valor\s*total|neto\s*a\s*pagar|total\s*venta|total\s*general|gran\s*total|valor\s*a\s*pagar|total\s*recibo)/i;
+        const mediumPriorityKeywords = /(total|pagar|neto|cobrar|efectivo|saldo|pagado|importe|venta)/i;
+        const excludeKeywords = /(nit|tel|cel|fecha|hora|subtotal|iva|cambio|base|tarifa|autoventa|resoluc|dian|prefijo)/i;
 
         for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            const hasKeyword = totalKeywords.test(line);
-            // Si la línea tiene palabra clave, revisa esa línea y la siguiente por si el número está abajo
-            const textToInspect = hasKeyword && (i + 1 < lines.length) ? line + ' ' + lines[i + 1] : line;
+            let line = lines[i];
+            
+            // Inspecciona la línea actual y la línea siguiente (habitual cuando "TOTAL" está arriba y el número abajo)
+            let combined = line;
+            if (i + 1 < lines.length) {
+                combined = line + ' ' + lines[i + 1];
+            }
 
-            // Busca números tipo moneda: $1.250.000, 1.250.000, 1,250,000, 1250000
-            const matches = textToInspect.match(/[\$]?\s*(\d{1,3}(?:[\.,]\d{3})*(?:[\.,]\d{2})?|\d{5,9})/g);
+            const isHighPriority = highPriorityKeywords.test(combined);
+            const isMediumPriority = mediumPriorityKeywords.test(combined);
+            const isExcluded = excludeKeywords.test(line) && !isHighPriority;
+
+            // Normalización para OCR: corregir sustituciones comunes de dígitos en tickets
+            // Ej: "TOTAL $ 1.45O.OOO" -> "TOTAL $ 1.450.000"
+            let normalized = combined
+                .replace(/([0-9\.,\$])\s*[oO]([0-9\.,])/g, '$10$2')
+                .replace(/([0-9\.,\$])\s*[lI]([0-9\.,])/g, '$11$2')
+                .replace(/([0-9\.,\$])\s*[sS]([0-9\.,])/g, '$15$2');
+
+            // Regex exhaustiva para detectar montos en pesos colombianos ($1.250.000, 1.250.000, 1,250,000, 1250000, etc.)
+            const matches = normalized.match(/(?:\$|\b)\s*(\d{1,3}(?:[.,']\d{3})*(?:[.,]\d{2})?|\d{5,9})\b/g);
+
             if (matches) {
                 matches.forEach(m => {
-                    let clean = m.replace(/[^\d.,]/g, '').trim();
-                    // Ignora decimales centavos (.00 o ,00)
+                    let clean = m.replace(/[^\d.,']/g, '').replace(/'/g, '').trim();
+                    if (!clean) return;
+
+                    // Descartar decimales de centavos (ej: ,00 o .00)
                     if (clean.includes('.') && clean.split('.').pop().length === 2) {
                         clean = clean.substring(0, clean.lastIndexOf('.'));
                     } else if (clean.includes(',') && clean.split(',').pop().length === 2) {
                         clean = clean.substring(0, clean.lastIndexOf(','));
                     }
-                    const num = parseInt(clean.replace(/[\.,]/g, ''));
-                    // Filtra cantidades razonables de compras (entre 50 mil y 500 millones)
-                    if (num >= 50000 && num <= 500000000) {
-                        candidates.push({
-                            amount: num,
-                            score: hasKeyword ? 100 : 20
-                        });
+
+                    // Remover separadores de miles
+                    const num = parseInt(clean.replace(/[.,]/g, ''), 10);
+
+                    // Filtrar montos razonables de compras de acabados y materiales ($20.000 a $500.000.000 COP)
+                    // Y descartar años tipo 2024, 2025, 2026, 2027
+                    if (num >= 20000 && num <= 500000000 && num !== 2024 && num !== 2025 && num !== 2026 && num !== 2027) {
+                        let score = 10;
+                        if (isHighPriority) score = 150;
+                        else if (isMediumPriority) score = 80;
+                        else if (isExcluded) score = 5;
+
+                        // Si el número está en el tercio inferior del texto, dar bonificación (habitual para totales)
+                        if (i > lines.length * 0.5) score += 20;
+
+                        candidates.push({ amount: num, score: score, rawLine: combined });
                     }
                 });
             }
@@ -865,94 +989,119 @@
 
         if (candidates.length === 0) return null;
 
-        // Ordena: líneas con palabra clave primero, y si empatan el valor más alto (el Total es >= Subtotal)
+        // Ordenar candidatos: primero los de mayor puntuación contextual (TOTAL A PAGAR), y a igualdad el monto más alto
         candidates.sort((a, b) => b.score - a.score || b.amount - a.amount);
+        console.log("Candidatos de total detectados:", candidates);
         return candidates[0].amount;
     }
 
-    // Función que procesa la imagen con Tesseract OCR
+    // Ejecución de Tesseract OCR con doble pasada optimizada
     function runRealOCR(sourceCanvas) {
         if (typeof Tesseract === 'undefined') {
-            console.warn('Tesseract OCR no cargado');
+            console.warn('Tesseract OCR no cargado en la página.');
             return;
         }
 
         if (ocrScanningStatus) {
             ocrScanningStatus.classList.remove('d-none');
-            if (ocrStatusText) ocrStatusText.textContent = 'Leyendo números reales de tu factura...';
+            if (ocrStatusText) ocrStatusText.textContent = 'Enfocando números reales de tu factura...';
         }
 
-        Tesseract.recognize(sourceCanvas, 'eng', {
+        // Redimensionar canvas si la imagen original es masiva (optimización de velocidad y nitidez)
+        let procCanvas = sourceCanvas;
+        const maxDim = 1800;
+        if (sourceCanvas.width > maxDim || sourceCanvas.height > maxDim) {
+            const scale = Math.min(maxDim / sourceCanvas.width, maxDim / sourceCanvas.height);
+            procCanvas = document.createElement('canvas');
+            procCanvas.width = Math.round(sourceCanvas.width * scale);
+            procCanvas.height = Math.round(sourceCanvas.height * scale);
+            const pctx = procCanvas.getContext('2d');
+            pctx.imageSmoothingQuality = 'high';
+            pctx.drawImage(sourceCanvas, 0, 0, procCanvas.width, procCanvas.height);
+        }
+
+        // Aplicar preprocesamiento de contraste adaptativo
+        preprocessInvoiceImage(procCanvas);
+
+        Tesseract.recognize(procCanvas, 'spa+eng', {
             logger: m => {
                 if (m.status === 'recognizing text' && ocrStatusText) {
                     const pct = Math.round((m.progress || 0) * 100);
-                    ocrStatusText.textContent = `Analizando factura: ${pct}%...`;
+                    ocrStatusText.textContent = `Leyendo factura: ${pct}%...`;
                 }
             }
         }).then(({ data: { text } }) => {
             stopCamera();
             if (cameraModalInstance) cameraModalInstance.hide();
             if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
-            btnCaptureFrame.disabled = false;
+            if (btnCaptureFrame) btnCaptureFrame.disabled = false;
 
             const extractedTotal = extractInvoiceTotalFromText(text);
             if (extractedTotal) {
                 applyScannedTotal(extractedTotal);
             } else {
-                // Si no detectó patrón exacto, abre el selector rápido para que el usuario confirme
-                const promptVal = prompt("No se detectó el total automáticamente con suficiente nitidez. Por favor escribe el total de tu factura física (COP):", "1200000");
-                if (promptVal) {
-                    const clean = parseInt(promptVal.replace(/\D/g, '')) || 0;
-                    applyScannedTotal(clean);
-                }
+                // Si el recorte completo no dio alta certeza, intentar segunda pasada en el 45% inferior
+                tryBottomCropOCR(procCanvas);
             }
         }).catch(err => {
             console.error('Error en OCR:', err);
             stopCamera();
             if (cameraModalInstance) cameraModalInstance.hide();
             if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
-            btnCaptureFrame.disabled = false;
-            const promptVal = prompt("Ingresa el total que aparece en tu factura (COP):", "1500000");
+            if (btnCaptureFrame) btnCaptureFrame.disabled = false;
+            // Fallback amigable
+            const promptVal = prompt("Ingresa el total que aparece en tu factura (COP):", "1250000");
             if (promptVal) {
-                applyScannedTotal(parseInt(promptVal.replace(/\D/g, '')) || 0);
+                applyScannedTotal(parseInt(promptVal.replace(/\D/g, ''), 10) || 0);
             }
         });
     }
 
-    // Captura desde el stream de video de la cámara
+    // Segunda pasada enfocada en el tercio inferior del ticket (donde siempre está el Total)
+    function tryBottomCropOCR(sourceCanvas) {
+        try {
+            const cropCanvas = document.createElement('canvas');
+            const startY = Math.round(sourceCanvas.height * 0.50);
+            const cropHeight = sourceCanvas.height - startY;
+            cropCanvas.width = sourceCanvas.width;
+            cropCanvas.height = cropHeight;
+            const cctx = cropCanvas.getContext('2d');
+            cctx.drawImage(sourceCanvas, 0, startY, sourceCanvas.width, cropHeight, 0, 0, cropCanvas.width, cropHeight);
+
+            Tesseract.recognize(cropCanvas, 'spa+eng').then(({ data: { text } }) => {
+                const subTotal = extractInvoiceTotalFromText(text);
+                if (subTotal) {
+                    applyScannedTotal(subTotal);
+                } else {
+                    const promptVal = prompt("No se leyó el número automáticamente con suficiente nitidez. Por favor confirma el valor total de tu factura física (COP):", "1500000");
+                    if (promptVal) {
+                        applyScannedTotal(parseInt(promptVal.replace(/\D/g, ''), 10) || 0);
+                    }
+                }
+            }).catch(() => {
+                const promptVal = prompt("Por favor confirma el total de tu factura (COP):", "1000000");
+                if (promptVal) applyScannedTotal(parseInt(promptVal.replace(/\D/g, ''), 10) || 0);
+            });
+        } catch(e) {
+            console.warn('Recorte inferior falló:', e);
+        }
+    }
+
+    // Captura desde el stream de video en pantalla
     if (btnCaptureFrame) {
         btnCaptureFrame.addEventListener('click', function() {
             btnCaptureFrame.disabled = true;
-
-            // Extrae el fotograma al canvas local y aplica preprocesamiento de contraste
             if (cameraVideo && ocrCanvas) {
                 const ctx = ocrCanvas.getContext('2d');
-                ocrCanvas.width = cameraVideo.videoWidth || 800;
-                ocrCanvas.height = cameraVideo.videoHeight || 600;
+                ocrCanvas.width = cameraVideo.videoWidth || 1280;
+                ocrCanvas.height = cameraVideo.videoHeight || 720;
                 ctx.drawImage(cameraVideo, 0, 0, ocrCanvas.width, ocrCanvas.height);
-
-                // Preprocesamiento de alto contraste para destacar números impresos
-                try {
-                    const imgData = ctx.getImageData(0, 0, ocrCanvas.width, ocrCanvas.height);
-                    const d = imgData.data;
-                    for (let i = 0; i < d.length; i += 4) {
-                        const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-                        const val = gray > 130 ? 255 : (gray < 70 ? 0 : gray);
-                        d[i] = val;
-                        d[i + 1] = val;
-                        d[i + 2] = val;
-                    }
-                    ctx.putImageData(imgData, 0, 0);
-                } catch(e) {
-                    console.warn('Preprocesamiento omitido:', e);
-                }
-
                 runRealOCR(ocrCanvas);
             }
         });
     }
 
-    // Captura desde la cámara nativa del teléfono o selección de foto HD
+    // Captura desde cámara nativa móvil en alta resolución
     if (localCameraInput) {
         localCameraInput.addEventListener('change', function(e) {
             if (this.files && this.files[0]) {

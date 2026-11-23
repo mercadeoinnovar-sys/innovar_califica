@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Allow: /ranking/
+Allow: /evaluar/
+Disallow: /admin-dashboard/
+Disallow: /admin/
+Disallow: /export-csv/
+
+Sitemap: https://innovarservice.grupoinnovar.co/sitemap.xml

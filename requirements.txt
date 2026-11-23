@@ -1,5 +1,6 @@
-# requirements.txt
+# requirements.txt para producción en Vercel y Cloud
 Django>=4.2,<5.0
-qrcode[pil]
-Pillow
-psycopg2-binary
+qrcode[pil]>=7.4.2
+Pillow>=10.0.0
+psycopg2-binary>=2.9.9
+whitenoise>=6.5.0
