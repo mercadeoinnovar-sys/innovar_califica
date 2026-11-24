@@ -110,6 +110,7 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # Almacenamiento optimizado para producción en Vercel con WhiteNoise
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+WHITENOISE_MANIFEST_STRICT = False
 
 # Media (uploaded files, QR images, avatars)
 MEDIA_URL = '/media/'
