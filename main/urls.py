@@ -11,7 +11,8 @@ urlpatterns = [
     path('evaluar/sede/<int:location_id>/', views.evaluate_location_direct, name='evaluate_location_direct'),
     path('evaluate/', views.evaluate, name='evaluate'),
 
-    # Módulo de Sorteos & Boletas de Facturas (Independiente)
+    # Módulo de Sorteos & Boletas de Facturas (Post-evaluación)
+    path('boletas/registrar/<int:evaluation_id>/', views.add_invoice_to_evaluation, name='add_invoice_to_evaluation'),
     path('boletas/', views.raffle_register, name='raffle_register'),
     path('sorteo/', views.raffle_register, name='raffle_alias'),
 

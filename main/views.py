@@ -1,6 +1,8 @@
 # main/views.py
 """Views for INNOVAR SERVICE - Grupo Innovar."""
 import csv
+import re
+from decimal import Decimal
 from datetime import datetime
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
@@ -206,80 +208,64 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
     })
 
 
-def raffle_register(request):
-    """Módulo independiente para registrar facturas de compra y participar en sorteos de boletas."""
-    if not request.session.session_key:
-        request.session.save()
-    session_key = request.session.session_key
-    client_ip = get_client_ip(request)
+def add_invoice_to_evaluation(request, evaluation_id):
+    """
+    Asocia la factura escaneada o ingresada directamente a la evaluación recién completada.
+    No solicita ni sala ni asesor (se heredan automáticamente del asesor evaluado).
+    Asigna 1 boleta oficial por cada $1'000.000 COP facturados.
+    """
+    evaluation = get_object_or_404(Evaluation, id=evaluation_id)
 
     if request.method == "POST":
-        form = RaffleRegistrationForm(request.POST)
-        if form.is_valid():
-            phone = form.cleaned_data.get("client_phone")
-            new_amount = form.cleaned_data["invoice_amount"]
-            now = timezone.now()
+        raw_amount = request.POST.get("invoice_amount", "").strip()
+        raw_number = request.POST.get("invoice_number", "").strip()
 
-            # Control anti-redundancia: 1 solo registro por cliente por mes, acumulando sus compras y boletas
-            existing_monthly = Evaluation.objects.filter(
-                client_phone=phone,
-                created_at__year=now.year,
-                created_at__month=now.month,
-                is_valid=True
-            ).first()
+        # Limpiar cualquier caracter que no sea dígito
+        clean_amount = re.sub(r"[^\d]", "", raw_amount)
+        try:
+            amount = Decimal(clean_amount) if clean_amount else Decimal("0")
+        except Exception:
+            amount = Decimal("0")
 
-            if existing_monthly:
-                entry = existing_monthly
-                entry.client_name = form.cleaned_data["client_name"]
-                entry.location = form.cleaned_data["location"]
-                if form.cleaned_data.get("advisor"):
-                    entry.advisor = form.cleaned_data["advisor"]
-                entry.client_city = entry.location.city if entry.location else ""
-                prev_amount = entry.invoice_amount or 0
-                entry.invoice_amount = prev_amount + new_amount
-                if form.cleaned_data.get("invoice_number"):
-                    entry.invoice_number = form.cleaned_data["invoice_number"]
-                entry.ip_address = client_ip
-                entry.session_key = session_key
-                entry.created_at = now
-            else:
-                entry = form.save(commit=False)
-                entry.client_city = entry.location.city if entry.location else ""
-                entry.ip_address = client_ip
-                entry.session_key = session_key
-                entry.attention_quality = "Excelente"
-                entry.info_clarity = "Sí, completamente"
-                entry.product_knowledge = "Sí"
-                entry.disposition = "Siempre"
-                entry.recommendation = "Definitivamente sí"
-                entry.overall_star = 5
-                entry.is_valid = True
-                entry.invoice_image = None
+        if amount >= Decimal("1000000"):
+            evaluation.invoice_amount = amount
+            if raw_number:
+                evaluation.invoice_number = raw_number
+            evaluation.tickets_count = int(amount // Decimal("1000000"))
+            codes = [f"INV-{evaluation.id:04d}-{i+1}" for i in range(evaluation.tickets_count)]
+            evaluation.ticket_codes = ", ".join(codes)
+            evaluation.save(update_fields=["invoice_amount", "invoice_number", "tickets_count", "ticket_codes"])
+            messages.success(request, f"¡Felicitaciones! Se han generado {evaluation.tickets_count} boletas oficiales a tu nombre.")
+        elif amount > 0:
+            evaluation.invoice_amount = amount
+            if raw_number:
+                evaluation.invoice_number = raw_number
+            evaluation.tickets_count = 0
+            evaluation.ticket_codes = ""
+            evaluation.save(update_fields=["invoice_amount", "invoice_number", "tickets_count", "ticket_codes"])
+            messages.warning(request, "El monto de la factura no alcanza el mínimo de $1'000.000 COP para obtener boletas del sorteo.")
 
-            # Asignación acumulada de boletas: 1 boleta por cada $1'000.000 COP
-            if entry.invoice_amount and entry.invoice_amount >= 1000000:
-                entry.tickets_count = int(entry.invoice_amount // 1000000)
-            else:
-                entry.tickets_count = 0
+        return render(request, "main/thank_you.html", {
+            "evaluation": evaluation,
+            "advisor": evaluation.advisor,
+            "is_advisor_evaluation": True,
+            "tickets_generated": evaluation.tickets_count > 0,
+        })
 
-            entry.save()
-
-            if entry.tickets_count > 0:
-                codes = [f"INV-{entry.id:04d}-{i+1}" for i in range(entry.tickets_count)]
-                entry.ticket_codes = ", ".join(codes)
-                entry.save(update_fields=["ticket_codes"])
-
-            return render(request, "main/thank_you.html", {
-                "evaluation": entry,
-                "advisor": entry.advisor,
-                "is_raffle_entry": True
-            })
-    else:
-        form = RaffleRegistrationForm()
-
-    return render(request, "main/raffle_register.html", {
-        "form": form
+    return render(request, "main/thank_you.html", {
+        "evaluation": evaluation,
+        "advisor": evaluation.advisor,
+        "is_advisor_evaluation": True,
     })
+
+
+def raffle_register(request):
+    """
+    Las boletas de sorteo se generan exclusivamente tras calificar al asesor comercial.
+    Si se accede a esta ruta directamente, se redirige a calificar al asesor.
+    """
+    messages.info(request, "Para obtener tus boletas del sorteo, califica primero la atención de tu asesor comercial.")
+    return redirect("evaluate_es")
 
 
 def ranking(request):

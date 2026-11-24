@@ -172,18 +172,143 @@
             </div>
         </div>
 
-        <!-- BANNER INVITACIÓN AL SORTEO DE BOLETAS -->
-        <div class="card border-0 rounded-4 p-3 mb-4 shadow-xs" style="background: linear-gradient(135deg, #FFF1F2 0%, #FFFBEB 100%); border: 1.5px dashed #E11D48 !important;">
-            <div class="d-flex align-items-center gap-2 mb-2">
-                <i class="bi bi-gift-fill text-danger fs-3"></i>
-                <div class="text-start">
-                    <div class="fw-bold text-dark">¿Hiciste una compra hoy?</div>
-                    <small class="text-muted" style="font-size: 0.78rem;">Por cada $1'000.000 COP acumulas 1 boleta para sorteos exclusivos.</small>
+        <!-- BANNER / SECCIÓN PARA REGISTRAR FACTURA Y GENERAR BOLETAS (SOLO TRAS CALIFICAR AL ASESOR) -->
+        <div class="card border-0 rounded-4 p-3 p-md-4 mb-4 text-start shadow-xs" style="background: linear-gradient(135deg, #FFF1F2 0%, #FFFBEB 100%); border: 2px dashed #E11D48 !important;">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-danger text-white shadow-xs" style="width: 40px; height: 40px; font-size: 1.25rem;">
+                    <i class="bi bi-ticket-perforated-fill"></i>
+                </div>
+                <div>
+                    <span class="badge bg-danger text-uppercase px-2 py-0 fw-bold" style="font-size: 0.68rem; letter-spacing: 0.05em;">Sorteo Oficial Grupo Innovar</span>
+                    <h5 class="fw-bold mb-0 text-dark">¿Realizaste una compra hoy?</h5>
+                    <small class="text-muted" style="font-size: 0.78rem;">Acumula <strong>1 boleta oficial</strong> por cada <strong>$1'000.000 COP</strong> en compras.</small>
                 </div>
             </div>
-            <a href="{% url 'raffle_register' %}" class="btn btn-danger btn-sm rounded-pill fw-bold py-2">
-                <i class="bi bi-ticket-perforated-fill me-1"></i> Registrar Factura para el Sorteo
-            </a>
+
+            <!-- DATOS AUTOMÁTICAMENTE ASOCIADOS (SIN PEDIR SEDE NI ASESOR) -->
+            <div class="p-3 rounded-3 bg-white border mb-3 small">
+                <div class="text-muted mb-2 fw-semibold" style="font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase;">
+                    <i class="bi bi-shield-check text-success me-1"></i> Boletas asignadas automáticamente a:
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">Titular:</span>
+                    <strong class="text-dark">{{ evaluation.client_name }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">Celular:</span>
+                    <span class="text-dark font-monospace">{{ evaluation.client_phone }}</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">Sede:</span>
+                    <span class="text-dark">{{ evaluation.location.name }} ({{ evaluation.location.city }})</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-muted">Asesor Comercial:</span>
+                    <span class="text-dark">{{ evaluation.advisor.full_name }}</span>
+                </div>
+            </div>
+
+            <!-- FORMULARIO DE REGISTRO DE FACTURA -->
+            <form method="post" action="{% url 'add_invoice_to_evaluation' evaluation.id %}" id="invoiceForm">
+                {% csrf_token %}
+
+                <!-- BOTONES DE CÁMARA HD Y VISOR OCR -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark mb-1">
+                        <i class="bi bi-upc-scan text-danger me-1"></i> Escanear Total de Factura Física:
+                    </label>
+                    <div class="row g-2">
+                        <div class="col-12 col-sm-7">
+                            <button type="button" class="btn btn-danger w-100 py-2 rounded-3 shadow-xs fw-bold d-flex align-items-center justify-content-center gap-2" id="btnSnapHighResDirect">
+                                <i class="bi bi-camera-fill fs-5"></i>
+                                <span>Tomar Foto / Subir Recibo</span>
+                            </button>
+                        </div>
+                        <div class="col-12 col-sm-5">
+                            <button type="button" class="btn btn-outline-dark w-100 py-2 rounded-3 shadow-xs fw-semibold d-flex align-items-center justify-content-center gap-2" id="btnOpenLiveScanner">
+                                <i class="bi bi-upc-scan text-danger"></i>
+                                <span>Visor en Vivo</span>
+                            </button>
+                        </div>
+                    </div>
+                    <input type="file" accept="image/*" capture="environment" id="localCameraInput" class="d-none">
+                </div>
+
+                <!-- ESTADO DE LECTURA POR ESCÁNER -->
+                <div id="invoiceScanStatusBox" class="p-3 bg-white rounded-3 border mb-3 text-center">
+                    <div id="noScanYet">
+                        <div class="text-muted small">
+                            <i class="bi bi-info-circle text-secondary me-1"></i> Toma foto de tu recibo o digita el valor total de tu compra abajo:
+                        </div>
+                    </div>
+                    <div id="scanDetectedBox" class="d-none text-start">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div>
+                                <span class="badge bg-success rounded-pill px-2 py-1 mb-1" style="font-size: 0.7rem;">
+                                    <i class="bi bi-check-circle-fill me-1"></i> Total Detectado por Escáner
+                                </span>
+                                <div class="h4 fw-bolder text-dark mb-0 font-monospace" id="displayScannedAmount">$0 COP</div>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" id="btnRescan">
+                                <i class="bi bi-arrow-repeat me-1"></i> Re-escanear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VALORES RÁPIDOS (1 TOQUE) -->
+                <div class="mb-3">
+                    <small class="text-muted fw-bold d-block mb-1" style="font-size: 0.7rem; text-transform: uppercase;">Montos frecuentes:</small>
+                    <div class="d-flex flex-wrap gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-amount-btn" data-amt="1000000" style="font-size: 0.75rem;">$1'000.000 (1 boleta)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-amount-btn" data-amt="2000000" style="font-size: 0.75rem;">$2'000.000 (2 boletas)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-amount-btn" data-amt="3000000" style="font-size: 0.75rem;">$3'000.000 (3 boletas)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-amount-btn" data-amt="5000000" style="font-size: 0.75rem;">$5'000.000 (5 boletas)</button>
+                    </div>
+                </div>
+
+                <!-- CAMPO MONTO TOTAL -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark mb-1" for="id_invoice_amount">
+                        <i class="bi bi-cash-stack text-success me-1"></i> Total Pagado en Factura (COP) *
+                    </label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light fw-bold text-dark">$</span>
+                        <input type="number" name="invoice_amount" id="id_invoice_amount" class="form-control form-control-lg fw-bold" placeholder="Ej: 1500000" min="1000000" step="1000" required>
+                    </div>
+                    <small class="text-muted" style="font-size: 0.72rem;">Mínimo $1'000.000 COP para obtener boletas oficiales.</small>
+                </div>
+
+                <!-- CAMPO NÚMERO DE FACTURA (OPCIONAL) -->
+                <div class="mb-3">
+                    <label class="form-label small text-muted mb-1" for="id_invoice_number">
+                        <i class="bi bi-receipt text-primary me-1"></i> Número o Consecutivo de Factura (Opcional):
+                    </label>
+                    <input type="text" name="invoice_number" id="id_invoice_number" class="form-control" placeholder="Ej: FE-10492">
+                </div>
+
+                <!-- RESULTADO EN VIVO DE BOLETAS -->
+                <div id="raffleResultBox" class="p-3 rounded-3 bg-white border mb-3 d-none">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-ticket-perforated-fill fs-3 text-danger"></i>
+                            <div>
+                                <span class="fw-bold d-block text-dark small" id="raffleTitle">Calculando...</span>
+                                <small class="text-muted" id="raffleSubtitle">1 boleta x cada $1'000.000</small>
+                            </div>
+                        </div>
+                        <span class="badge fs-6 px-3 py-2 rounded-pill bg-success text-white shadow-xs" id="raffleBadge">
+                            0 Boletas
+                        </span>
+                    </div>
+                </div>
+
+                <!-- BOTÓN GENERAR BOLETAS -->
+                <button type="submit" id="btnSubmitInvoice" class="btn btn-innovar btn-lg w-100 py-3 rounded-pill fw-bold shadow d-flex align-items-center justify-content-center gap-2">
+                    <i class="bi bi-ticket-perforated-fill" id="btnSubmitInvoiceIcon"></i>
+                    <span id="btnSubmitInvoiceText">GENERAR MIS BOLETAS OFICIALES</span>
+                </button>
+            </form>
         </div>
         {% endif %}
 
@@ -199,12 +324,66 @@
 
     </div>
 </div>
+
+<!-- MODAL VISOR EN VIVO DE CÁMARA PARA FACTURAS -->
+<div class="modal fade" id="cameraScannerModal" tabindex="-1" aria-labelledby="cameraScannerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+            <div class="modal-header bg-dark text-white py-3">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-camera-fill text-danger fs-5"></i>
+                    <h6 class="modal-title fw-bold mb-0" id="cameraScannerModalLabel">Escanear Total de Factura</h6>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-3 text-center bg-black position-relative">
+                <div class="position-relative overflow-hidden rounded-3" style="max-height: 380px; min-height: 280px; background: #000;">
+                    <video id="cameraVideo" playsinline autoplay muted style="width: 100%; height: 100%; object-fit: cover;"></video>
+                    <div class="position-absolute top-50 start-50 translate-middle w-75 p-3 rounded-3" style="border: 2px dashed #00FF66; background: rgba(0, 255, 102, 0.08); pointer-events: none;">
+                        <span class="badge bg-dark bg-opacity-75 text-white fw-bold px-2 py-1" style="font-size: 0.72rem;">ENFOCA AQUÍ EL TOTAL $</span>
+                    </div>
+                    <canvas id="ocrCanvas" class="d-none"></canvas>
+                </div>
+                <div class="mt-3 text-white">
+                    <p class="small text-white-50 mb-2">Apunta la cámara al total pagado de tu recibo físico.</p>
+                    <div class="d-flex flex-column align-items-center gap-2">
+                        <button type="button" class="btn btn-danger btn-lg rounded-pill px-4 shadow fw-bold" id="btnCaptureFrame">
+                            <i class="bi bi-upc-scan me-1"></i> Capturar y Detectar Total
+                        </button>
+                        <button type="button" class="btn btn-outline-light btn-sm rounded-pill px-3" id="btnSnapHighRes">
+                            <i class="bi bi-camera-fill me-1"></i> O tomar foto nítida con tu teléfono
+                        </button>
+                        <div id="ocrScanningStatus" class="small text-warning fw-semibold d-none mt-1">
+                            <span class="spinner-border spinner-border-sm me-2"></span><span id="ocrStatusText">Leyendo números de tu factura...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light p-3 border-0">
+                <div class="w-100">
+                    <small class="fw-bold text-muted d-block mb-2 text-uppercase" style="font-size: 0.7rem; letter-spacing: 0.05em;">
+                        Valores comunes (1 toque sin digitar):
+                    </small>
+                    <div class="d-flex flex-wrap gap-1">
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="1000000">$1'000.000</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="2000000">$2'000.000</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="3000000">$3'000.000</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="5000000">$5'000.000</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <!-- HTML2CANVAS PARA DESCARGA DE BOLETA DIGITAL -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- TESSERACT OCR CLIENT-SIDE (LECTURA DE ALTA PRECISIÓN) -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
+    // 1. Descarga de Boleta Oficial en PNG
     const btnDownloadTicket = document.getElementById('btnDownloadTicket');
     const digitalTicketCard = document.getElementById('digitalTicketCard');
 
@@ -235,6 +414,290 @@
                 btnDownloadTicket.innerHTML = originalBtnHtml;
                 alert('No se pudo generar la imagen. Puedes tomar una captura de pantalla a tu boleta.');
             });
+        });
+    }
+
+    // 2. Motor OCR y Cálculo en Vivo de Boletas para Facturas
+    const invoiceAmountInput = document.getElementById('id_invoice_amount');
+    const raffleResultBox = document.getElementById('raffleResultBox');
+    const raffleTitle = document.getElementById('raffleTitle');
+    const raffleSubtitle = document.getElementById('raffleSubtitle');
+    const raffleBadge = document.getElementById('raffleBadge');
+    const invoiceForm = document.getElementById('invoiceForm');
+    const btnSubmitInvoice = document.getElementById('btnSubmitInvoice');
+    const btnSubmitInvoiceIcon = document.getElementById('btnSubmitInvoiceIcon');
+    const btnSubmitInvoiceText = document.getElementById('btnSubmitInvoiceText');
+
+    function updateRaffleCalculation() {
+        if (!invoiceAmountInput || !raffleResultBox) return;
+        const raw = parseInt(invoiceAmountInput.value) || 0;
+        const tickets = Math.floor(raw / 1000000);
+
+        if (tickets >= 1) {
+            raffleResultBox.classList.remove('d-none');
+            raffleTitle.innerHTML = `🎉 Califica con <strong>${tickets} boleta${tickets > 1 ? 's' : ''}</strong>`;
+            raffleSubtitle.textContent = `Asignadas a tu nombre (${tickets} participación${tickets > 1 ? 'es' : ''})`;
+            raffleBadge.className = 'badge fs-6 px-3 py-2 rounded-pill shadow-xs bg-success text-white';
+            raffleBadge.textContent = `${tickets} Boleta${tickets > 1 ? 's' : ''}`;
+        } else if (raw > 0) {
+            raffleResultBox.classList.remove('d-none');
+            raffleTitle.innerHTML = `<span class="text-secondary">$${raw.toLocaleString('es-CO')} COP</span>`;
+            raffleSubtitle.textContent = "Monto mínimo: $1'000.000 COP para 1 boleta.";
+            raffleBadge.className = 'badge fs-7 px-3 py-2 rounded-pill bg-light text-muted border';
+            raffleBadge.textContent = "Sin boletas";
+        } else {
+            raffleResultBox.classList.add('d-none');
+        }
+    }
+
+    if (invoiceAmountInput) {
+        invoiceAmountInput.addEventListener('input', updateRaffleCalculation);
+        if (invoiceAmountInput.value) updateRaffleCalculation();
+    }
+
+    // Botones de monto rápido
+    document.querySelectorAll('.quick-amount-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const amt = this.getAttribute('data-amt');
+            applyScannedTotal(amt);
+            if (cameraModalInstance) cameraModalInstance.hide();
+            stopCamera();
+        });
+    });
+
+    // Envío del formulario de factura
+    if (invoiceForm && btnSubmitInvoice) {
+        invoiceForm.addEventListener('submit', function(e) {
+            const val = parseInt(invoiceAmountInput.value) || 0;
+            if (val < 1000000) {
+                e.preventDefault();
+                alert("El monto de la factura debe ser de al menos $1'000.000 COP para generar boletas oficiales de sorteo.");
+                invoiceAmountInput.focus();
+                return false;
+            }
+            if (btnSubmitInvoice.getAttribute('data-submitting') === 'true') {
+                e.preventDefault();
+                return false;
+            }
+            btnSubmitInvoice.setAttribute('data-submitting', 'true');
+            btnSubmitInvoice.disabled = true;
+            btnSubmitInvoice.style.opacity = '0.85';
+            if (btnSubmitInvoiceIcon) btnSubmitInvoiceIcon.className = 'spinner-border spinner-border-sm me-2';
+            if (btnSubmitInvoiceText) btnSubmitInvoiceText.textContent = 'Generando boletas oficiales...';
+        });
+    }
+
+    // 3. Cámara y Escáner OCR
+    const btnSnapHighResDirect = document.getElementById('btnSnapHighResDirect');
+    const btnOpenLiveScanner = document.getElementById('btnOpenLiveScanner');
+    const cameraScannerModalEl = document.getElementById('cameraScannerModal');
+    const cameraVideo = document.getElementById('cameraVideo');
+    const btnCaptureFrame = document.getElementById('btnCaptureFrame');
+    const btnSnapHighRes = document.getElementById('btnSnapHighRes');
+    const ocrScanningStatus = document.getElementById('ocrScanningStatus');
+    const ocrStatusText = document.getElementById('ocrStatusText');
+    const ocrCanvas = document.getElementById('ocrCanvas');
+    const localCameraInput = document.getElementById('localCameraInput');
+    const noScanYet = document.getElementById('noScanYet');
+    const scanDetectedBox = document.getElementById('scanDetectedBox');
+    const displayScannedAmount = document.getElementById('displayScannedAmount');
+    const btnRescan = document.getElementById('btnRescan');
+
+    let cameraStream = null;
+    let cameraModalInstance = null;
+
+    if (cameraScannerModalEl) {
+        cameraModalInstance = new bootstrap.Modal(cameraScannerModalEl);
+        cameraScannerModalEl.addEventListener('hidden.bs.modal', function () {
+            stopCamera();
+        });
+    }
+
+    function stopCamera() {
+        if (cameraStream) {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraStream = null;
+        }
+    }
+
+    function applyScannedTotal(amount) {
+        const num = parseInt(amount) || 0;
+        if (num <= 0) return;
+        if (invoiceAmountInput) invoiceAmountInput.value = num;
+        if (noScanYet) noScanYet.classList.add('d-none');
+        if (scanDetectedBox) scanDetectedBox.classList.remove('d-none');
+        if (displayScannedAmount) {
+            displayScannedAmount.textContent = '$' + num.toLocaleString('es-CO') + ' COP';
+        }
+        updateRaffleCalculation();
+        if (navigator.vibrate) {
+            try { navigator.vibrate([60, 40, 80]); } catch(e) {}
+        }
+    }
+
+    if (btnRescan && localCameraInput) {
+        btnRescan.addEventListener('click', function() {
+            localCameraInput.click();
+        });
+    }
+
+    if (btnSnapHighResDirect && localCameraInput) {
+        btnSnapHighResDirect.addEventListener('click', function() {
+            localCameraInput.click();
+        });
+    }
+
+    if (btnSnapHighRes && localCameraInput) {
+        btnSnapHighRes.addEventListener('click', function() {
+            stopCamera();
+            if (cameraModalInstance) cameraModalInstance.hide();
+            localCameraInput.click();
+        });
+    }
+
+    if (btnOpenLiveScanner) {
+        btnOpenLiveScanner.addEventListener('click', function() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                if (cameraModalInstance) cameraModalInstance.show();
+                if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
+                if (btnCaptureFrame) btnCaptureFrame.disabled = false;
+                navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+                }).then(stream => {
+                    cameraStream = stream;
+                    if (cameraVideo) cameraVideo.srcObject = stream;
+                }).catch(err => {
+                    if (cameraModalInstance) cameraModalInstance.hide();
+                    if (localCameraInput) localCameraInput.click();
+                });
+            } else if (localCameraInput) {
+                localCameraInput.click();
+            }
+        });
+    }
+
+    function extractInvoiceTotalFromText(rawText) {
+        if (!rawText) return null;
+        const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+        const candidates = [];
+
+        const highPriorityKeywords = /(total\s*a\s*pagar|total\s*factura|valor\s*total|neto\s*a\s*pagar|total\s*venta|total\s*general|gran\s*total|valor\s*a\s*pagar|total\s*recibo)/i;
+        const mediumPriorityKeywords = /(total|pagar|neto|cobrar|efectivo|saldo|pagado|importe|venta)/i;
+        const excludeKeywords = /(nit|tel|cel|fecha|hora|subtotal|iva|cambio|base|tarifa|autoventa|resoluc|dian|prefijo)/i;
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i];
+            let combined = line;
+            if (i + 1 < lines.length) combined = line + ' ' + lines[i + 1];
+
+            const isHighPriority = highPriorityKeywords.test(combined);
+            const isMediumPriority = mediumPriorityKeywords.test(combined);
+            const isExcluded = excludeKeywords.test(line) && !isHighPriority;
+
+            let normalized = combined
+                .replace(/([0-9\.,\$])\s*[oO]([0-9\.,])/g, '$10$2')
+                .replace(/([0-9\.,\$])\s*[lI]([0-9\.,])/g, '$11$2')
+                .replace(/([0-9\.,\$])\s*[sS]([0-9\.,])/g, '$15$2');
+
+            const matches = normalized.match(/(?:\$|\b)\s*(\d{1,3}(?:[.,']\d{3})*(?:[.,]\d{2})?|\d{5,9})\b/g);
+
+            if (matches) {
+                matches.forEach(m => {
+                    let clean = m.replace(/[^\d.,']/g, '').replace(/'/g, '').trim();
+                    if (!clean) return;
+
+                    if (clean.includes('.') && clean.split('.').pop().length === 2) {
+                        clean = clean.substring(0, clean.lastIndexOf('.'));
+                    } else if (clean.includes(',') && clean.split(',').pop().length === 2) {
+                        clean = clean.substring(0, clean.lastIndexOf(','));
+                    }
+
+                    const num = parseInt(clean.replace(/[.,]/g, ''), 10);
+
+                    if (num >= 50000 && num <= 500000000 && num !== 2024 && num !== 2025 && num !== 2026 && num !== 2027) {
+                        let score = 10;
+                        if (isHighPriority) score = 150;
+                        else if (isMediumPriority) score = 80;
+                        else if (isExcluded) score = 5;
+
+                        if (i > lines.length * 0.5) score += 20;
+                        candidates.push({ amount: num, score: score });
+                    }
+                });
+            }
+        }
+
+        if (candidates.length === 0) return null;
+        candidates.sort((a, b) => b.score - a.score || b.amount - a.amount);
+        return candidates[0].amount;
+    }
+
+    function runRealOCR(sourceCanvas) {
+        if (typeof Tesseract === 'undefined') return;
+
+        if (ocrScanningStatus) {
+            ocrScanningStatus.classList.remove('d-none');
+            if (ocrStatusText) ocrStatusText.textContent = 'Enfocando total de tu factura...';
+        }
+
+        Tesseract.recognize(sourceCanvas, 'spa+eng', {
+            logger: m => {
+                if (m.status === 'recognizing text' && ocrStatusText) {
+                    const pct = Math.round((m.progress || 0) * 100);
+                    ocrStatusText.textContent = `Leyendo factura: ${pct}%...`;
+                }
+            }
+        }).then(({ data: { text } }) => {
+            stopCamera();
+            if (cameraModalInstance) cameraModalInstance.hide();
+            if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
+            if (btnCaptureFrame) btnCaptureFrame.disabled = false;
+
+            const extractedTotal = extractInvoiceTotalFromText(text);
+            if (extractedTotal) {
+                applyScannedTotal(extractedTotal);
+            } else {
+                const promptVal = prompt("Ingresa el total que aparece en tu factura (COP):", "1250000");
+                if (promptVal) applyScannedTotal(parseInt(promptVal.replace(/\D/g, ''), 10) || 0);
+            }
+        }).catch(err => {
+            stopCamera();
+            if (cameraModalInstance) cameraModalInstance.hide();
+            if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
+            if (btnCaptureFrame) btnCaptureFrame.disabled = false;
+            const promptVal = prompt("Ingresa el total que aparece en tu factura (COP):", "1250000");
+            if (promptVal) applyScannedTotal(parseInt(promptVal.replace(/\D/g, ''), 10) || 0);
+        });
+    }
+
+    if (btnCaptureFrame) {
+        btnCaptureFrame.addEventListener('click', function() {
+            btnCaptureFrame.disabled = true;
+            if (cameraVideo && ocrCanvas) {
+                const ctx = ocrCanvas.getContext('2d');
+                ocrCanvas.width = cameraVideo.videoWidth || 1280;
+                ocrCanvas.height = cameraVideo.videoHeight || 720;
+                ctx.drawImage(cameraVideo, 0, 0, ocrCanvas.width, ocrCanvas.height);
+                runRealOCR(ocrCanvas);
+            }
+        });
+    }
+
+    if (localCameraInput) {
+        localCameraInput.addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                const file = this.files[0];
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    runRealOCR(canvas);
+                };
+                img.src = URL.createObjectURL(file);
+            }
         });
     }
 </script>
