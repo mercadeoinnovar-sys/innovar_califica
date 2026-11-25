@@ -58,7 +58,7 @@
                     <span class="text-muted small fw-bold text-uppercase">Ventas Participantes</span>
                     <span class="badge bg-primary"><i class="bi bi-cash-stack"></i></span>
                 </div>
-                <div class="h4 fw-bold mb-0 text-dark">${{ total_sales_amount|floatformat:0 }}</div>
+                <div class="h4 fw-bold mb-0 text-dark">${{ total_sales_amount_formatted }}</div>
                 <small class="text-muted">Total facturado en sorteo</small>
             </div>
         </div>
@@ -70,7 +70,7 @@
                     <span class="text-muted small fw-bold text-uppercase">Condición del Sorteo</span>
                     <span class="badge bg-warning text-dark"><i class="bi bi-award-fill"></i></span>
                 </div>
-                <div class="h5 fw-bold mb-0 text-dark">$1.000.000 COP</div>
+                <div class="h5 fw-bold mb-0 text-dark">$1,000,000 COP</div>
                 <small class="text-muted">Monto mínimo por boleta</small>
             </div>
         </div>
@@ -152,7 +152,7 @@
                             </a>
                         </td>
                         <td class="fw-bold text-dark fs-6">
-                            ${{ ev.invoice_amount|floatformat:0 }}
+                            ${{ ev.invoice_amount_formatted }}
                         </td>
                         <td>
                             {% if ev.invoice_number %}
@@ -170,7 +170,7 @@
                         </td>
                         <td class="text-center">
                             {% if ev.invoice_photo_url %}
-                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" data-invoice-url="{{ ev.invoice_photo_url }}" data-client-name="{{ ev.client_name }}" data-amount="${{ ev.invoice_amount|floatformat:0 }} COP" onclick="showInvoiceModalFromBtn(this)">
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" data-invoice-url="{{ ev.invoice_photo_url }}" data-client-name="{{ ev.client_name }}" data-amount="${{ ev.invoice_amount_formatted }} COP" onclick="showInvoiceModalFromBtn(this)">
                                 <i class="bi bi-image me-1"></i> Ver Factura
                             </button>
                             {% else %}

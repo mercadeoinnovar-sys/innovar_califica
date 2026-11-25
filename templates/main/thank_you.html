@@ -126,7 +126,7 @@
                 </div>
                 <div class="d-flex justify-content-between mb-1">
                     <span class="text-white-50">Total Factura Validada:</span>
-                    <strong class="text-danger">${{ evaluation.invoice_amount|floatformat:0 }} COP</strong>
+                    <strong class="text-danger">${{ evaluation.invoice_amount_formatted }} COP</strong>
                 </div>
                 {% if evaluation.invoice_number %}
                 <div class="d-flex justify-content-between mb-1">
@@ -317,10 +317,10 @@
                 <div class="mb-3">
                     <small class="text-muted fw-bold d-block mb-1" style="font-size: 0.7rem; text-transform: uppercase;">Montos frecuentes:</small>
                     <div class="d-flex flex-wrap gap-1">
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-amount-btn" data-amt="1000000" style="font-size: 0.75rem;">$1'000.000 (1 boleta)</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-amount-btn" data-amt="2000000" style="font-size: 0.75rem;">$2'000.000 (2 boletas)</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-amount-btn" data-amt="3000000" style="font-size: 0.75rem;">$3'000.000 (3 boletas)</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-amount-btn" data-amt="5000000" style="font-size: 0.75rem;">$5'000.000 (5 boletas)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-amount-btn" data-amt="1000000" style="font-size: 0.75rem;">$1,000,000 (1 boleta)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-amount-btn" data-amt="2000000" style="font-size: 0.75rem;">$2,000,000 (2 boletas)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-amount-btn" data-amt="3000000" style="font-size: 0.75rem;">$3,000,000 (3 boletas)</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill py-1 px-2 quick-amount-btn" data-amt="5000000" style="font-size: 0.75rem;">$5,000,000 (5 boletas)</button>
                     </div>
                 </div>
 
@@ -331,9 +331,9 @@
                     </label>
                     <div class="input-group">
                         <span class="input-group-text bg-light fw-bold text-dark">$</span>
-                        <input type="number" name="invoice_amount" id="id_invoice_amount" class="form-control form-control-lg fw-bold" placeholder="Ej: 1500000" min="1000000" step="1000" value="{{ entered_amount|default:'' }}" required>
+                        <input type="text" name="invoice_amount" id="id_invoice_amount" class="form-control form-control-lg fw-bold font-monospace" placeholder="Ej: 1,500,000" inputmode="numeric" autocomplete="off" maxlength="15" value="{{ entered_amount|default:'' }}" required>
                     </div>
-                    <small class="text-muted" style="font-size: 0.72rem;">Mínimo $1'000.000 COP para obtener boletas oficiales.</small>
+                    <small class="text-muted" style="font-size: 0.72rem;">Mínimo $1,000,000 COP por boleta. Solo cuentan millones completos ($1,050,000 o $1,999,000 = 1 boleta; $2,000,000 = 2 boletas).</small>
                     <div id="fraudMismatchAlert" class="alert alert-danger py-2 px-3 small mt-2 mb-0 d-none rounded-3"></div>
                 </div>
 
@@ -446,10 +446,10 @@
                         Valores comunes (1 toque sin digitar):
                     </small>
                     <div class="d-flex flex-wrap gap-1">
-                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="1000000">$1'000.000</button>
-                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="2000000">$2'000.000</button>
-                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="3000000">$3'000.000</button>
-                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="5000000">$5'000.000</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="1000000">$1,000,000</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="2000000">$2,000,000</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="3000000">$3,000,000</button>
+                        <button type="button" class="btn btn-sm btn-outline-dark rounded-pill quick-amount-btn" data-amt="5000000">$5,000,000</button>
                     </div>
                 </div>
             </div>
@@ -576,14 +576,27 @@
         if (raffleCedulaInput.value) validateRaffleCedula(false);
     }
 
+    function formatCopCommas(val) {
+        const digits = String(val || '').replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+        if (!digits) return '';
+        return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
+    function getNumericInvoiceAmount() {
+        if (!invoiceAmountInput) return 0;
+        const digits = String(invoiceAmountInput.value || '').replace(/\D/g, '');
+        return parseInt(digits, 10) || 0;
+    }
+
     function updateRaffleCalculation() {
         if (!invoiceAmountInput || !raffleResultBox) return;
-        const raw = parseInt(invoiceAmountInput.value) || 0;
+        const raw = getNumericInvoiceAmount();
         const tickets = Math.floor(raw / 1000000);
+        const remainder = raw % 1000000;
 
         if (fraudMismatchAlert) {
             if (lastDetectedScannerAmount > 0 && raw > lastDetectedScannerAmount) {
-                fraudMismatchAlert.innerHTML = `<i class="bi bi-exclamation-octagon-fill me-1"></i><strong>🚨 ¡CUIDADO!</strong> Estás ingresando <strong>$${raw.toLocaleString('es-CO')} COP</strong>, que supera el total detectado en tu factura (<strong>$${lastDetectedScannerAmount.toLocaleString('es-CO')} COP</strong>). Si inflas el valor para obtener más boletas, <strong>NO recibirás el premio</strong> al verificar en caja así ganes.`;
+                fraudMismatchAlert.innerHTML = `<i class="bi bi-exclamation-octagon-fill me-1"></i><strong>🚨 ¡CUIDADO!</strong> Estás ingresando <strong>$${formatCopCommas(raw)} COP</strong>, que supera el total detectado en tu factura (<strong>$${formatCopCommas(lastDetectedScannerAmount)} COP</strong>). Si inflas el valor para obtener más boletas, <strong>NO recibirás el premio</strong> al verificar en caja así ganes.`;
                 fraudMismatchAlert.classList.remove('d-none');
             } else {
                 fraudMismatchAlert.classList.add('d-none');
@@ -592,14 +605,22 @@
 
         if (tickets >= 1) {
             raffleResultBox.classList.remove('d-none');
-            raffleTitle.innerHTML = `🎉 Califica con <strong>${tickets} boleta${tickets > 1 ? 's' : ''}</strong>`;
-            raffleSubtitle.textContent = `Asignadas a tu nombre (${tickets} participación${tickets > 1 ? 'es' : ''})`;
+            if (remainder === 0) {
+                raffleTitle.innerHTML = `🎉 Recibes <strong>${tickets} boleta${tickets > 1 ? 's' : ''} oficial${tickets > 1 ? 'es' : ''}</strong> (por $${formatCopCommas(raw)} exactos)`;
+                raffleSubtitle.textContent = `Asignadas a tu nombre (1 boleta por cada $1,000,000 COP completos)`;
+            } else {
+                const missing = 1000000 - remainder;
+                const nextMillion = (tickets + 1) * 1000000;
+                raffleTitle.innerHTML = `🎉 Recibes <strong>${tickets} boleta${tickets > 1 ? 's' : ''}</strong> (por $${formatCopCommas(tickets * 1000000)} completos)`;
+                raffleSubtitle.textContent = `Ingresaste $${formatCopCommas(raw)} COP • Faltan $${formatCopCommas(missing)} para llegar a $${formatCopCommas(nextMillion)} y obtener la boleta #${tickets + 1} (si no sube al siguiente millón, no se entrega la siguiente boleta).`;
+            }
             raffleBadge.className = 'badge fs-6 px-3 py-2 rounded-pill shadow-xs bg-success text-white';
             raffleBadge.textContent = `${tickets} Boleta${tickets > 1 ? 's' : ''}`;
         } else if (raw > 0) {
             raffleResultBox.classList.remove('d-none');
-            raffleTitle.innerHTML = `<span class="text-secondary">$${raw.toLocaleString('es-CO')} COP</span>`;
-            raffleSubtitle.textContent = "Monto mínimo: $1'000.000 COP para 1 boleta.";
+            const missingFirst = 1000000 - raw;
+            raffleTitle.innerHTML = `<span class="text-secondary">Sin boletas todavía ($${formatCopCommas(raw)} COP)</span>`;
+            raffleSubtitle.textContent = `Faltan $${formatCopCommas(missingFirst)} para completar $1,000,000 COP y obtener tu 1ª boleta (no se redondea).`;
             raffleBadge.className = 'badge fs-7 px-3 py-2 rounded-pill bg-light text-muted border';
             raffleBadge.textContent = "Sin boletas";
         } else {
@@ -608,8 +629,28 @@
     }
 
     if (invoiceAmountInput) {
-        invoiceAmountInput.addEventListener('input', updateRaffleCalculation);
-        if (invoiceAmountInput.value) updateRaffleCalculation();
+        invoiceAmountInput.addEventListener('input', function() {
+            const rawVal = this.value;
+            const selStart = this.selectionStart || 0;
+            const digitsBeforeCursor = rawVal.slice(0, selStart).replace(/\D/g, '').length;
+            const formatted = formatCopCommas(rawVal);
+            this.value = formatted;
+
+            if (typeof this.setSelectionRange === 'function') {
+                let newPos = 0;
+                let counted = 0;
+                while (newPos < formatted.length && counted < digitsBeforeCursor) {
+                    if (/\d/.test(formatted[newPos])) counted++;
+                    newPos++;
+                }
+                this.setSelectionRange(newPos, newPos);
+            }
+            updateRaffleCalculation();
+        });
+        if (invoiceAmountInput.value) {
+            invoiceAmountInput.value = formatCopCommas(invoiceAmountInput.value);
+            updateRaffleCalculation();
+        }
     }
 
     // Botones de monto rápido
@@ -622,17 +663,17 @@
         });
     });
 
-    // Envío del formulario de factura (exige cédula + monto >= $1M)
+    // Envío del formulario de factura (exige cédula + monto >= $1,000,000)
     if (invoiceForm && btnSubmitInvoice) {
         invoiceForm.addEventListener('submit', function(e) {
             if (!validateRaffleCedula(true)) {
                 e.preventDefault();
                 return false;
             }
-            const val = parseInt(invoiceAmountInput.value) || 0;
+            const val = getNumericInvoiceAmount();
             if (val < 1000000) {
                 e.preventDefault();
-                alert("El monto de la factura debe ser de al menos $1'000.000 COP para generar boletas oficiales de sorteo.");
+                alert("El monto de la factura debe ser de al menos $1,000,000 COP para generar boletas oficiales de sorteo.");
                 invoiceAmountInput.focus();
                 return false;
             }
@@ -757,7 +798,7 @@
             lastDetectedScannerAmount = num;
         }
         hideScanAlert();
-        if (invoiceAmountInput) invoiceAmountInput.value = num;
+        if (invoiceAmountInput) invoiceAmountInput.value = formatCopCommas(num);
         if (noScanYet) noScanYet.classList.add('d-none');
         if (scanProcessingBox) scanProcessingBox.classList.add('d-none');
         if (scanDetectedBox) scanDetectedBox.classList.remove('d-none');
@@ -765,7 +806,7 @@
             scanEngineBadge.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> ${engineLabel}`;
         }
         if (displayScannedAmount) {
-            displayScannedAmount.textContent = '$' + num.toLocaleString('es-CO') + ' COP';
+            displayScannedAmount.textContent = '$' + formatCopCommas(num) + ' COP';
         }
         updateRaffleCalculation();
         if (navigator.vibrate) {
@@ -939,7 +980,7 @@
                             applyDetectedMetadata(dian.factura_numero, dian.cedula, dian.cufe);
                             applyScannedTotal(dian.total, 'QR DIAN Exacto');
                             if (dian.total < 1000000) {
-                                showScanAlert(`QR DIAN leído: $${dian.total.toLocaleString('es-CO')} COP. Recuerda que el mínimo para boletas es $1'000.000 COP.`);
+                                showScanAlert(`QR DIAN leído: $${formatCopCommas(dian.total)} COP. Recuerda que el mínimo para boletas es $1,000,000 COP.`);
                             }
                             stopCamera();
                             if (cameraModalInstance) cameraModalInstance.hide();
@@ -1046,7 +1087,7 @@
             applyDetectedMetadata(dian.factura_numero, dian.cedula, dian.cufe);
             applyScannedTotal(dian.total, 'QR DIAN Exacto');
             if (dian.total < 1000000) {
-                showScanAlert(`QR DIAN leído: $${dian.total.toLocaleString('es-CO')} COP. Recuerda que el monto mínimo para boletas es $1'000.000 COP.`);
+                showScanAlert(`QR DIAN leído: $${formatCopCommas(dian.total)} COP. Recuerda que el monto mínimo para boletas es $1,000,000 COP.`);
             }
             finishScannerUi();
             return;
@@ -1085,7 +1126,7 @@
                     if (data.already_registered) {
                         showScanAlert('🚫 Esta factura ya fue registrada previamente en el sorteo y está bloqueada contra duplicados.');
                     } else if (data.total < 1000000) {
-                        showScanAlert(`Factura detectada: $${data.total.toLocaleString('es-CO')} COP. El mínimo para boletas es $1'000.000 COP.`);
+                        showScanAlert(`Factura detectada: $${formatCopCommas(data.total)} COP. El mínimo para boletas es $1,000,000 COP.`);
                     }
                     finishScannerUi();
                     return;
@@ -1125,7 +1166,7 @@
             if (extractedTotal) {
                 applyScannedTotal(extractedTotal, 'Escáner Inteligente');
                 if (extractedTotal < 1000000) {
-                    showScanAlert(`Monto leído: $${extractedTotal.toLocaleString('es-CO')} COP. Recuerda que necesitas mínimo $1'000.000 COP para boletas.`);
+                    showScanAlert(`Monto leído: $${formatCopCommas(extractedTotal)} COP. Recuerda que necesitas mínimo $1,000,000 COP para boletas.`);
                 }
             } else {
                 if (noScanYet) noScanYet.classList.remove('d-none');

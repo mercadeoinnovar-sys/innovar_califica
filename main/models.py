@@ -151,6 +151,13 @@ class Evaluation(models.Model):
     is_valid = models.BooleanField(default=True)
 
     @property
+    def invoice_amount_formatted(self):
+        """Retorna el valor de la factura formateado con comas de miles (ej: 1,900,000)."""
+        if self.invoice_amount is None:
+            return "0"
+        return f"{int(self.invoice_amount):,}"
+
+    @property
     def invoice_photo_url(self):
         """Retorna la foto de la factura en base64 persistente o URL multimedia."""
         if self.invoice_image_base64:

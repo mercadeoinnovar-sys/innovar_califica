@@ -263,12 +263,14 @@ def add_invoice_to_evaluation(request, evaluation_id):
         raw_img_b64 = request.POST.get("invoice_image_base64", "").strip()
 
         def _render_error(extra_ctx):
+            digits_entered = re.sub(r"[^\d]", "", raw_amount)
+            formatted_entered = f"{int(digits_entered):,}" if digits_entered else raw_amount
             ctx = {
                 "evaluation": evaluation,
                 "advisor": evaluation.advisor,
                 "is_advisor_evaluation": True,
                 "entered_cedula": raw_cedula,
-                "entered_amount": raw_amount,
+                "entered_amount": formatted_entered,
                 "entered_number": raw_number,
                 "entered_cufe": raw_cufe,
                 "auto_scroll_raffle": True,
@@ -331,7 +333,10 @@ def add_invoice_to_evaluation(request, evaluation_id):
             codes = [f"INV-{evaluation.id:04d}-{i+1}" for i in range(evaluation.tickets_count)]
             evaluation.ticket_codes = ", ".join(codes)
             evaluation.save(update_fields=update_fields)
-            messages.success(request, f"¡Felicitaciones! Se han generado {evaluation.tickets_count} boletas oficiales a tu nombre (CC {valid_cedula}).")
+            messages.success(
+                request,
+                f"¡Felicitaciones! Con tu factura de ${int(amount):,} COP se han generado {evaluation.tickets_count} boleta(s) oficial(es) (CC {valid_cedula})."
+            )
         elif amount > 0:
             evaluation.invoice_amount = amount
             evaluation.invoice_number = raw_number.upper()
@@ -340,7 +345,7 @@ def add_invoice_to_evaluation(request, evaluation_id):
             evaluation.tickets_count = 0
             evaluation.ticket_codes = ""
             evaluation.save(update_fields=update_fields)
-            messages.warning(request, "El monto de la factura no alcanza el mínimo de $1'000.000 COP para obtener boletas del sorteo.")
+            messages.warning(request, f"Tu factura (${int(amount):,} COP) no alcanza el mínimo de $1,000,000 COP para obtener boletas del sorteo.")
         else:
             evaluation.save(update_fields=["client_cedula"])
 
@@ -726,6 +731,7 @@ def admin_raffle(request):
         "total_tickets": total_tickets,
         "total_participants": total_participants,
         "total_sales_amount": total_sales_amount,
+        "total_sales_amount_formatted": f"{int(total_sales_amount):,}",
         "cities": cities,
         "selected_city": city_filter,
         "search_query": search_query,
@@ -1013,6 +1019,7 @@ def admin_clients(request):
         "unique_phones": unique_phones,
         "raffle_clients": raffle_clients,
         "total_sales": total_sales,
+        "total_sales_formatted": f"{int(total_sales):,}",
         "phone_list_str": phone_list_str,
         "cities": ["Ibagué", "Girardot", "Neiva", "Fusagasugá"],
     })
