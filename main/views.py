@@ -201,7 +201,7 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
 
         form = EvaluationForm(initial=initial)
 
-    advisors_list = Advisor.objects.filter(is_active=True).select_related('location')
+    advisors_list = Advisor.objects.filter(is_active=True).select_related('location').order_by('location__city', 'location__name', 'full_name')
     locations_list = Location.objects.all()
 
     return render(request, "main/evaluate.html", {
@@ -567,16 +567,29 @@ def admin_advisors(request):
     else:
         form = AdvisorForm()
 
-    advisors_list = Advisor.objects.select_related('location').annotate(
+    city_filter = request.GET.get("city", "").strip()
+    location_filter = request.GET.get("location", "").strip()
+
+    advisors_qs = Advisor.objects.select_related('location').annotate(
         eval_count=Count('evaluations', filter=Q(evaluations__is_valid=True)),
         avg_star=Avg('evaluations__overall_star', filter=Q(evaluations__is_valid=True))
-    ).order_by('full_name')
+    )
+    if city_filter:
+        advisors_qs = advisors_qs.filter(location__city=city_filter)
+    if location_filter and location_filter.isdigit():
+        advisors_qs = advisors_qs.filter(location_id=int(location_filter))
 
-    locations = Location.objects.all()
+    advisors_list = advisors_qs.order_by('location__city', 'location__name', 'full_name')
+    locations = Location.objects.filter(city=city_filter) if city_filter else Location.objects.all()
+    cities = sorted(list({c.strip() for c in Location.objects.values_list('city', flat=True) if c}))
 
     return render(request, "main/admin_advisors.html", {
         "advisors_list": advisors_list,
-        "locations": locations,
+        "locations": Location.objects.all(),
+        "filter_locations": locations,
+        "cities": cities,
+        "selected_city": city_filter,
+        "selected_location": location_filter,
         "form": form,
         "active_tab": "advisors",
     })
@@ -788,11 +801,26 @@ def admin_settings(request):
 
 @login_required(login_url='admin_login')
 def qr_management(request):
-    """Gestión de códigos QR individuales por asesor comercial."""
-    advisor_qrs = QRCode.objects.filter(advisor__isnull=False, advisor__is_active=True).select_related('advisor', 'location')
+    """Gestión de códigos QR individuales por asesor comercial organizados por ciudad y sala."""
+    city_filter = request.GET.get("city", "").strip()
+    location_filter = request.GET.get("location", "").strip()
+
+    qrs_qs = QRCode.objects.filter(advisor__isnull=False, advisor__is_active=True).select_related('advisor', 'location')
+    if city_filter:
+        qrs_qs = qrs_qs.filter(location__city=city_filter)
+    if location_filter and location_filter.isdigit():
+        qrs_qs = qrs_qs.filter(location_id=int(location_filter))
+
+    advisor_qrs = qrs_qs.order_by('location__city', 'location__name', 'advisor__full_name')
+    locations = Location.objects.filter(city=city_filter) if city_filter else Location.objects.all()
+    cities = sorted(list({c.strip() for c in Location.objects.values_list('city', flat=True) if c}))
 
     return render(request, "main/qr_management.html", {
         "advisor_qrs": advisor_qrs,
+        "locations": locations,
+        "cities": cities,
+        "selected_city": city_filter,
+        "selected_location": location_filter,
         "active_tab": "qrcodes",
     })
 

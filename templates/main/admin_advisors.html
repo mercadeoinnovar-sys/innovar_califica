@@ -15,7 +15,35 @@
         </button>
     </div>
 
-    <!-- TABLA DE ASESORES -->
+    <!-- FILTROS POR CIUDAD Y SALA -->
+    <div class="card-innovar p-3 mb-3">
+        <form method="get" class="row g-2 align-items-center">
+            <div class="col-sm-5">
+                <select name="city" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Todas las ciudades</option>
+                    {% for c in cities %}
+                    <option value="{{ c }}" {% if selected_city == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-sm-5">
+                <select name="location" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Todas las salas / sedes</option>
+                    {% for loc in filter_locations %}
+                    <option value="{{ loc.id }}" {% if selected_location == loc.id|stringformat:"s" %}selected{% endif %}>{{ loc.city }} — {{ loc.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-sm-2 d-flex gap-1">
+                <button type="submit" class="btn btn-sm btn-dark w-100 rounded-pill">Filtrar</button>
+                {% if selected_city or selected_location %}
+                <a href="{% url 'admin_advisors' %}" class="btn btn-sm btn-outline-secondary rounded-pill" title="Limpiar"><i class="bi bi-x-lg"></i></a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- TABLA DE ASESORES ORGANIZADOS POR CIUDAD Y SALA -->
     <div class="card-innovar p-4 mb-4">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -33,6 +61,14 @@
                 </thead>
                 <tbody>
                     {% for adv in advisors_list %}
+                    {% ifchanged adv.location_id %}
+                    <tr class="table-light">
+                        <td colspan="8" class="fw-bold py-2 px-3" style="background: #F8FAFC; border-left: 4px solid var(--innovar-red); color: #0F172A;">
+                            <i class="bi bi-geo-alt-fill text-danger me-1"></i>
+                            {{ adv.location.city }} &mdash; {{ adv.location.name }}
+                        </td>
+                    </tr>
+                    {% endifchanged %}
                     <tr>
                         <td>
                             <div class="d-flex align-items-center gap-3">
