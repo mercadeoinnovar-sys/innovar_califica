@@ -459,36 +459,6 @@
                     </div>
                 </div>
 
-                <!-- OPCIÓN CONDICIONAL DE BOLETAS: EXIGE CÉDULA SOLO SI PARTICIPA EN SORTEO -->
-                <div class="mt-3 pt-3 border-top">
-                    <div class="p-3 rounded-3 bg-white border" style="border-color: #FCA5A5 !important;">
-                        <div class="form-check form-switch mb-0">
-                            <input class="form-check-input" type="checkbox" role="switch" name="wants_raffle" id="id_wants_raffle" value="true" {% if form.wants_raffle.value or form.client_cedula.errors %}checked{% endif %}>
-                            <label class="form-check-label fw-bold text-dark small" for="id_wants_raffle">
-                                <i class="bi bi-ticket-perforated-fill text-danger me-1"></i>
-                                ¿Realizaste una compra &ge; $1'000.000 hoy y vas a registrar tu factura para boletas del sorteo?
-                            </label>
-                        </div>
-                        <small class="text-muted d-block mt-1" style="font-size: 0.74rem;">
-                            Solo si vas a registrar boletas te pediremos tu cédula para verificación en caja. Si solo calificas la atención, déjalo desactivado.
-                        </small>
-
-                        <div id="cedulaRaffleBox" class="mt-3 pt-2 border-top {% if not form.wants_raffle.value and not form.client_cedula.errors %}d-none{% endif %}">
-                            <label class="form-label small fw-bold text-dark mb-1" for="id_client_cedula">
-                                <i class="bi bi-person-vcard-fill text-danger me-1"></i> Número de Cédula (CC) *
-                                <span class="badge bg-danger ms-1" style="font-size: 0.62rem;">OBLIGATORIO SOLO PARA BOLETAS &bull; VERIFICACIÓN EN CAJA</span>
-                            </label>
-                            {{ form.client_cedula }}
-                            {% if form.client_cedula.errors %}
-                            <div class="text-danger small fw-semibold mt-1">{{ form.client_cedula.errors.0 }}</div>
-                            {% endif %}
-                            <div id="client_cedula_feedback" class="small mt-1" style="font-size: 0.72rem; color: #64748B;">
-                                Solo números (5 a 12 dígitos) para validar tu boleta y factura en caja.
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- CUMPLIMIENTO HABEAS DATA LEY 1581 DE 2012 -->
                 <div class="form-check mt-3 pt-2 border-top">
                     <input class="form-check-input" type="checkbox" name="data_authorization" id="id_data_authorization" value="true" checked required>
@@ -630,60 +600,6 @@
         });
     }
 
-    // 3. Cédula condicional: obligatoria SOLO si activa boletas del sorteo
-    const wantsRaffleCheckbox = document.getElementById('id_wants_raffle');
-    const cedulaRaffleBox = document.getElementById('cedulaRaffleBox');
-    const clientCedulaInput = document.getElementById('id_client_cedula');
-    const cedulaFeedback = document.getElementById('client_cedula_feedback');
-
-    function syncRaffleCedulaState() {
-        if (!wantsRaffleCheckbox || !cedulaRaffleBox || !clientCedulaInput) return;
-        if (wantsRaffleCheckbox.checked) {
-            cedulaRaffleBox.classList.remove('d-none');
-            clientCedulaInput.setAttribute('required', 'required');
-        } else {
-            cedulaRaffleBox.classList.add('d-none');
-            clientCedulaInput.removeAttribute('required');
-            clientCedulaInput.classList.remove('is-invalid', 'is-valid');
-        }
-    }
-
-    if (wantsRaffleCheckbox) {
-        wantsRaffleCheckbox.addEventListener('change', syncRaffleCedulaState);
-        syncRaffleCedulaState();
-    }
-
-    if (clientCedulaInput) {
-        clientCedulaInput.addEventListener('input', function() {
-            const digits = this.value.replace(/\D/g, '').substring(0, 12);
-            this.value = digits;
-            const allSame = digits.length > 0 && /^(\d)\1+$/.test(digits);
-            if (digits.length === 0) {
-                this.classList.remove('is-valid', 'is-invalid');
-                if (cedulaFeedback) {
-                    cedulaFeedback.textContent = 'Solo números (5 a 12 dígitos) para validar tu boleta y factura en caja.';
-                    cedulaFeedback.style.color = '#64748B';
-                }
-            } else if (digits.length >= 5 && digits.length <= 12 && !allSame) {
-                this.classList.remove('is-invalid');
-                this.classList.add('is-valid');
-                if (cedulaFeedback) {
-                    cedulaFeedback.textContent = '✓ Cédula válida para verificación en caja';
-                    cedulaFeedback.style.color = '#16A34A';
-                }
-            } else {
-                this.classList.remove('is-valid');
-                this.classList.add('is-invalid');
-                if (cedulaFeedback) {
-                    cedulaFeedback.textContent = allSame
-                        ? '⚠ Ingresa un número de cédula real'
-                        : `⚠ Ingresa entre 5 y 12 dígitos numéricos (llevas ${digits.length})`;
-                    cedulaFeedback.style.color = '#DC2626';
-                }
-            }
-        });
-    }
-
     // Anti doble-clic y spinner de carga en envío (ISO 27001 / Resiliencia Móvil)
     const form = document.getElementById('evalForm');
     const submitBtn = document.getElementById('submitBtn');
@@ -699,19 +615,6 @@
                     e.preventDefault();
                     clientPhoneInput.focus();
                     alert("Por favor ingresa un número celular válido de Colombia (10 dígitos comenzando por 3, ej: 3101234567).");
-                    return false;
-                }
-            }
-
-            // Verificar cédula ÚNICAMENTE si el usuario activó el registro de boletas
-            if (wantsRaffleCheckbox && wantsRaffleCheckbox.checked && clientCedulaInput) {
-                const cedDigits = clientCedulaInput.value.replace(/\D/g, '');
-                const allSame = cedDigits.length > 0 && /^(\d)\1+$/.test(cedDigits);
-                if (cedDigits.length < 5 || cedDigits.length > 12 || allSame) {
-                    e.preventDefault();
-                    clientCedulaInput.classList.add('is-invalid');
-                    clientCedulaInput.focus();
-                    alert("Como vas a registrar boletas del sorteo, debes ingresar tu número de cédula válido (5 a 12 dígitos) para verificación en caja.");
                     return false;
                 }
             }

@@ -157,8 +157,6 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
                     evaluation.advisor = form.cleaned_data["advisor"]
                     evaluation.location = form.cleaned_data["advisor"].location
                     evaluation.client_name = form.cleaned_data["client_name"]
-                    if form.cleaned_data.get("client_cedula"):
-                        evaluation.client_cedula = form.cleaned_data["client_cedula"]
                     evaluation.client_city = form.cleaned_data.get("client_city") or evaluation.location.city
                     evaluation.attention_quality = form.cleaned_data["attention_quality"]
                     evaluation.info_clarity = form.cleaned_data["info_clarity"]
@@ -176,7 +174,6 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
                 else:
                     evaluation = form.save(commit=False)
                     evaluation.location = evaluation.advisor.location
-                    evaluation.client_cedula = form.cleaned_data.get("client_cedula") or ""
                     if not evaluation.client_city:
                         evaluation.client_city = evaluation.advisor.location.city
                     evaluation.ip_address = client_ip
@@ -192,7 +189,6 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
                     "evaluation": evaluation,
                     "advisor": evaluation.advisor,
                     "is_advisor_evaluation": True,
-                    "auto_scroll_raffle": bool(form.cleaned_data.get("wants_raffle")),
                 })
     else:
         initial = {}

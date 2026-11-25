@@ -74,11 +74,6 @@ def clean_uppercase_name(name_raw):
 
 class EvaluationForm(forms.ModelForm):
     """Formulario exclusivo para Calificación y Evaluación de Asesores Comerciales."""
-    wants_raffle = forms.BooleanField(
-        required=False,
-        initial=False,
-        label="¿Realizaste una compra >= $1'000.000 hoy y vas a registrar tu factura para boletas del sorteo?"
-    )
     data_authorization = forms.BooleanField(
         required=True,
         initial=True,
@@ -90,7 +85,6 @@ class EvaluationForm(forms.ModelForm):
         fields = [
             "client_name",
             "client_phone",
-            "client_cedula",
             "client_city",
             "location",
             "advisor",
@@ -118,12 +112,6 @@ class EvaluationForm(forms.ModelForm):
                 "inputmode": "numeric",
                 "maxlength": "10",
                 "pattern": "3[0-9]{9}"
-            }),
-            "client_cedula": forms.TextInput(attrs={
-                "class": "form-control form-control-lg font-monospace",
-                "placeholder": "Ej: 1110456789 (solo números)",
-                "inputmode": "numeric",
-                "maxlength": "12",
             }),
             "client_city": forms.TextInput(attrs={
                 "class": "form-control",
@@ -156,7 +144,6 @@ class EvaluationForm(forms.ModelForm):
         self.fields["location"].required = True
         self.fields["client_name"].required = True
         self.fields["client_phone"].required = True
-        self.fields["client_cedula"].required = False
         self.fields["data_authorization"].required = True
         self.fields["client_city"].required = False
         self.fields["comments"].required = False
@@ -173,15 +160,6 @@ class EvaluationForm(forms.ModelForm):
         phone = cleaned.get("client_phone")
         advisor = cleaned.get("advisor")
         comments = cleaned.get("comments")
-        wants_raffle = bool(cleaned.get("wants_raffle"))
-
-        try:
-            cleaned["client_cedula"] = clean_colombian_cedula(
-                cleaned.get("client_cedula"),
-                required=wants_raffle,
-            )
-        except forms.ValidationError as exc:
-            self.add_error("client_cedula", exc)
 
         if comments:
             cleaned["comments"] = html.escape(comments.strip())
