@@ -303,6 +303,17 @@
                     </div>
                 </div>
 
+                <!-- NOTA DE SEGURIDAD Y TRANSPARENCIA PARA EL SORTEO -->
+                <div class="alert alert-warning border rounded-3 p-2 small mb-3 text-start shadow-xs" style="font-size: 0.76rem; background: #FFFBEB; border-color: #FDE68A !important;">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-shield-lock-fill text-warning fs-5"></i>
+                        <div>
+                            <strong class="text-dark d-block">Verificación Oficial para el Sorteo:</strong>
+                            <span class="text-muted">Por seguridad y transparencia, verifica que el valor coincida con tu recibo. Si ganas, tu boleta será validada contra la factura física o electrónica.</span>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- BOTÓN GENERAR BOLETAS -->
                 <button type="submit" id="btnSubmitInvoice" class="btn btn-innovar btn-lg w-100 py-3 rounded-pill fw-bold shadow d-flex align-items-center justify-content-center gap-2">
                     <i class="bi bi-ticket-perforated-fill" id="btnSubmitInvoiceIcon"></i>
@@ -633,18 +644,51 @@
     }
 
     function runRealOCR(sourceCanvas) {
-        if (typeof Tesseract === 'undefined') return;
-
         if (ocrScanningStatus) {
             ocrScanningStatus.classList.remove('d-none');
-            if (ocrStatusText) ocrStatusText.textContent = 'Enfocando total de tu factura...';
+            if (ocrStatusText) ocrStatusText.textContent = 'Analizando factura con detector inteligente...';
         }
+
+        // 1. Invocar detector asistido por servidor/IA en segundo plano
+        try {
+            const b64Data = sourceCanvas.toDataURL('image/jpeg', 0.85);
+            const csrfTokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
+            const csrfToken = csrfTokenEl ? csrfTokenEl.value : '';
+
+            fetch('/api/detectar-factura/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ image_base64: b64Data })
+            }).then(res => res.json()).then(data => {
+                if (data.success && data.total && data.total >= 1000000) {
+                    applyScannedTotal(data.total);
+                    const idInvoiceNumber = document.getElementById('id_invoice_number');
+                    if (data.factura_numero && idInvoiceNumber && !idInvoiceNumber.value) {
+                        idInvoiceNumber.value = data.factura_numero;
+                    }
+                    stopCamera();
+                    if (cameraModalInstance) cameraModalInstance.hide();
+                    if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
+                    if (btnCaptureFrame) btnCaptureFrame.disabled = false;
+                    return;
+                }
+            }).catch(err => {
+                console.log("AI detection fallback to local OCR:", err);
+            });
+        } catch(e) {
+            console.warn(e);
+        }
+
+        if (typeof Tesseract === 'undefined') return;
 
         Tesseract.recognize(sourceCanvas, 'spa+eng', {
             logger: m => {
                 if (m.status === 'recognizing text' && ocrStatusText) {
                     const pct = Math.round((m.progress || 0) * 100);
-                    ocrStatusText.textContent = `Leyendo factura: ${pct}%...`;
+                    ocrStatusText.textContent = `Leyendo números de factura: ${pct}%...`;
                 }
             }
         }).then(({ data: { text } }) => {

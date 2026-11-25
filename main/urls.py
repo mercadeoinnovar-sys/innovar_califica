@@ -25,14 +25,26 @@ urlpatterns = [
     path('admin-logout/', views.admin_logout, name='admin_logout'),
     path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('admin-dashboard/asesores/', views.admin_advisors, name='admin_advisors'),
+    path('admin-dashboard/asesores/editar/<int:advisor_id>/', views.admin_advisor_edit, name='admin_advisor_edit'),
     path('admin-dashboard/sedes/', views.admin_locations, name='admin_locations'),
     path('admin-dashboard/evaluaciones/', views.admin_evaluations, name='admin_evaluations'),
-    path('admin-dashboard/clientes-pautas/', views.admin_clients, name='admin_clients'),
-    path('admin-dashboard/clientes-pautas/export-csv/', views.export_clients_csv, name='export_clients_csv'),
+    path('admin-dashboard/clientes/', views.admin_clients, name='admin_clients'),
+    path('admin-dashboard/clientes/export-excel/', views.export_clients_excel, name='export_clients_excel'),
+    path('admin-dashboard/clientes/export-word/', views.export_clients_word, name='export_clients_word'),
+    path('admin-dashboard/clientes/export-csv/', views.export_clients_csv, name='export_clients_csv'),
+    path('admin-dashboard/clientes-pautas/', views.admin_clients, name='admin_clients_legacy'),
+    path('admin-dashboard/clientes-pautas/export-csv/', views.export_clients_csv, name='export_clients_csv_legacy'),
     path('admin-dashboard/sorteos/', views.admin_raffle, name='admin_raffle'),
     path('admin-dashboard/reportes/', views.admin_reports, name='admin_reports'),
     path('admin-dashboard/configuracion/', views.admin_settings, name='admin_settings'),
     path('qr-management/', views.qr_management, name='qr_management'),
+
+    # Descarga directa y visualización de QR
+    path('qr/descargar/<int:qr_id>/', views.download_qr_png, name='download_qr_png'),
+    path('qr/ver/<int:qr_id>/', views.serve_qr_png, name='serve_qr_png'),
+
+    # API con Visión / IA para escanear facturas
+    path('api/detectar-factura/', views.detect_receipt_ai, name='detect_receipt_ai'),
 
     # Hablador de Mostrador Imprimible en acrílico
     path('imprimir-hablador/asesor/<int:advisor_id>/', views.print_counter_display, name='print_advisor_display'),

@@ -36,9 +36,13 @@
                     <tr>
                         <td>
                             <div class="d-flex align-items-center gap-3">
-                                <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 42px; height: 42px; background: var(--innovar-red);">
-                                    {{ adv.full_name|slice:":1" }}
-                                </div>
+                                {% if adv.photo_url %}
+                                    <img src="{{ adv.photo_url }}" alt="{{ adv.full_name }}" class="rounded-circle shadow-sm" style="width: 44px; height: 44px; object-fit: cover; border: 2px solid #E11D48;">
+                                {% else %}
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 44px; height: 44px; background: var(--innovar-red); font-size: 1.1rem;">
+                                        {{ adv.full_name|slice:":1" }}
+                                    </div>
+                                {% endif %}
                                 <div>
                                     <span class="fw-bold text-dark d-block">{{ adv.full_name }}</span>
                                     <small class="text-muted">{{ adv.position }}</small>
@@ -75,6 +79,9 @@
                         </td>
                         <td class="text-end">
                             <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editAdvisorModal{{ adv.id }}" title="Editar Asesor y Subir Fotografía">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
                                 <a href="{% url 'advisor_detail' adv.id %}" class="btn btn-outline-secondary" title="Ver Perfil y Comentarios">
                                     <i class="bi bi-eye"></i>
                                 </a>
@@ -146,6 +153,86 @@
             </div>
         </div>
     </div>
+
+    <!-- MODALES DE EDICIÓN Y FOTOGRAFÍA POR ASESOR -->
+    {% for adv in advisors_list %}
+    <div class="modal fade" id="editAdvisorModal{{ adv.id }}" tabindex="-1" aria-labelledby="editAdvisorModalLabel{{ adv.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content rounded-4 border-0 shadow">
+                <div class="modal-header border-bottom bg-light py-3">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="bi bi-person-gear text-danger fs-5"></i>
+                        <h6 class="modal-title fw-bold mb-0" id="editAdvisorModalLabel{{ adv.id }}">
+                            Editar Asesor: {{ adv.full_name }}
+                        </h6>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'admin_advisor_edit' adv.id %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="modal-body p-4">
+                        <!-- FOTO ACTUAL Y SELECTOR -->
+                        <div class="text-center mb-4">
+                            {% if adv.photo_url %}
+                                <img src="{{ adv.photo_url }}" alt="{{ adv.full_name }}" class="rounded-circle shadow-sm mb-2" style="width: 80px; height: 80px; object-fit: cover; border: 3px solid #E11D48;">
+                            {% else %}
+                                <div class="rounded-circle d-inline-flex align-items-center justify-content-center text-white fw-bold shadow-sm mb-2" style="width: 80px; height: 80px; background: var(--innovar-red); font-size: 2rem;">
+                                    {{ adv.full_name|slice:":1" }}
+                                </div>
+                            {% endif %}
+                            <div class="small text-muted mb-2">Fotografía actual del asesor</div>
+                            <div class="text-start">
+                                <label class="form-label small fw-bold text-dark mb-1">
+                                    <i class="bi bi-camera-fill text-danger me-1"></i> Subir / Cambiar Fotografía (PNG, JPG):
+                                </label>
+                                <input type="file" name="photo" accept="image/*" class="form-control form-control-sm">
+                                <small class="text-muted" style="font-size: 0.72rem;">Se guardará optimizada y persistente en la base de datos.</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark mb-1">Nombre Completo *</label>
+                            <input type="text" name="full_name" value="{{ adv.full_name }}" class="form-control" required>
+                        </div>
+
+                        <div class="row g-2 mb-3">
+                            <div class="col-sm-6">
+                                <label class="form-label small fw-bold text-dark mb-1">Identificador / Código *</label>
+                                <input type="text" name="identifier" value="{{ adv.identifier }}" class="form-control font-monospace" required>
+                            </div>
+                            <div class="col-sm-6">
+                                <label class="form-label small fw-bold text-dark mb-1">Cargo</label>
+                                <input type="text" name="position" value="{{ adv.position }}" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-dark mb-1">Sede Asignada</label>
+                            <select name="location" class="form-select">
+                                {% for loc in locations %}
+                                    <option value="{{ loc.id }}" {% if adv.location_id == loc.id %}selected{% endif %}>
+                                        {{ loc.name }} ({{ loc.city }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" name="is_active" id="activeSwitch{{ adv.id }}" {% if adv.is_active %}checked{% endif %}>
+                            <label class="form-check-label small fw-semibold" for="activeSwitch{{ adv.id }}">Asesor Activo (Disponible para calificación de clientes)</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top bg-light py-2">
+                        <button type="button" class="btn btn-sm btn-secondary rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-sm btn-innovar rounded-pill px-3">
+                            <i class="bi bi-check-circle-fill me-1"></i> Guardar Cambios
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
 
 </div>
 {% endblock %}

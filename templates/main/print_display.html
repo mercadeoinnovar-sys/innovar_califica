@@ -225,8 +225,8 @@
             <!-- MARCO DEL CÓDIGO QR -->
             <div class="qr-frame">
                 <div id="dynamicQrBox" style="width: 200px; height: 200px; margin: 0 auto; display: flex; align-items: center; justify-content: center;">
-                    {% if qr and qr.image %}
-                        <img src="{{ qr.image.url }}" alt="Código QR de Calificación" style="width: 200px; height: 200px; object-fit: contain;">
+                    {% if qr %}
+                        <img src="{% url 'serve_qr_png' qr.id %}" alt="Código QR de Calificación" style="width: 200px; height: 200px; object-fit: contain;">
                     {% else %}
                         <div style="width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; color: #94A3B8;">
                             Código QR

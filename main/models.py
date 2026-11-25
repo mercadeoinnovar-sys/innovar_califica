@@ -30,6 +30,7 @@ class Advisor(models.Model):
     position = models.CharField(max_length=100, default="Asesor Comercial")
     is_active = models.BooleanField(default=True)
     photo = models.ImageField(upload_to="advisors/", blank=True, null=True)
+    photo_base64 = models.TextField(blank=True, default="", help_text="Foto persistente en base64 para despliegues serverless")
 
     class Meta:
         verbose_name = "Asesor"
@@ -59,6 +60,18 @@ class Advisor(models.Model):
     @property
     def evaluation_count(self):
         return self.evaluations.filter(is_valid=True).count()
+
+    @property
+    def photo_url(self):
+        """Retorna la URL de la foto en base64 o ruta multimedia, o vacío si no tiene."""
+        if self.photo_base64:
+            return self.photo_base64
+        if self.photo and hasattr(self.photo, 'url'):
+            try:
+                return self.photo.url
+            except Exception:
+                pass
+        return ""
 
 
 class Evaluation(models.Model):

@@ -43,15 +43,9 @@
                         <h5 class="fw-bold mb-1 text-dark">{{ qr.advisor.full_name }}</h5>
                         <p class="text-muted small mb-3">{{ qr.location.name }} &bull; {{ qr.location.city }}</p>
 
-                        <!-- IMAGEN DEL QR -->
+                        <!-- IMAGEN DEL QR DINÁMICA -->
                         <div class="p-3 bg-white rounded-3 border d-inline-block mx-auto mb-3 shadow-sm">
-                            {% if qr.image %}
-                                <img src="{{ qr.image.url }}" alt="{{ qr.code }}" style="width: 160px; height: 160px;" class="d-block mx-auto">
-                            {% else %}
-                                <div class="d-flex align-items-center justify-content-center text-muted" style="width: 160px; height: 160px;">
-                                    Generando QR...
-                                </div>
-                            {% endif %}
+                            <img src="{% url 'serve_qr_png' qr.id %}" alt="{{ qr.code }}" style="width: 160px; height: 160px;" class="d-block mx-auto">
                         </div>
 
                         <div class="mt-auto d-flex flex-column gap-2">
@@ -61,11 +55,9 @@
                             </a>
                             
                             <div class="d-flex gap-2">
-                                {% if qr.image %}
-                                <a href="{{ qr.image.url }}" download="{{ qr.code }}.png" class="btn btn-sm btn-innovar w-50 rounded-pill">
+                                <a href="{% url 'download_qr_png' qr.id %}" class="btn btn-sm btn-innovar w-50 rounded-pill">
                                     <i class="bi bi-download me-1"></i> PNG
                                 </a>
-                                {% endif %}
                                 <button class="btn btn-sm btn-outline-secondary w-50 rounded-pill btn-copy-link" data-url="{{ request.scheme }}://{{ request.get_host }}{{ qr.evaluation_path }}">
                                     <i class="bi bi-link-45deg me-1"></i> Copiar Link
                                 </button>
@@ -87,14 +79,9 @@
                         <h5 class="fw-bold mb-1 text-dark">{{ qr.location.name }}</h5>
                         <p class="text-muted small mb-3"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ qr.location.city }} (QR General)</p>
 
+                        <!-- IMAGEN DEL QR DINÁMICA -->
                         <div class="p-3 bg-white rounded-3 border d-inline-block mx-auto mb-3 shadow-sm">
-                            {% if qr.image %}
-                                <img src="{{ qr.image.url }}" alt="{{ qr.code }}" style="width: 160px; height: 160px;" class="d-block mx-auto">
-                            {% else %}
-                                <div class="d-flex align-items-center justify-content-center text-muted" style="width: 160px; height: 160px;">
-                                    Generando QR...
-                                </div>
-                            {% endif %}
+                            <img src="{% url 'serve_qr_png' qr.id %}" alt="{{ qr.code }}" style="width: 160px; height: 160px;" class="d-block mx-auto">
                         </div>
 
                         <div class="mt-auto d-flex flex-column gap-2">
@@ -102,11 +89,9 @@
                                 <i class="bi bi-printer-fill me-1"></i> Imprimir Hablador de Sede
                             </a>
                             <div class="d-flex gap-2">
-                                {% if qr.image %}
-                                <a href="{{ qr.image.url }}" download="{{ qr.code }}.png" class="btn btn-sm btn-innovar w-50 rounded-pill">
+                                <a href="{% url 'download_qr_png' qr.id %}" class="btn btn-sm btn-innovar w-50 rounded-pill">
                                     <i class="bi bi-download me-1"></i> PNG
                                 </a>
-                                {% endif %}
                                 <button class="btn btn-sm btn-outline-secondary w-50 rounded-pill btn-copy-link" data-url="{{ request.scheme }}://{{ request.get_host }}{{ qr.evaluation_path }}">
                                     <i class="bi bi-link-45deg me-1"></i> Copiar Link
                                 </button>

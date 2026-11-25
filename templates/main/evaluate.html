@@ -238,9 +238,13 @@
             <!-- ASIGNACIÓN DE ASESOR: BLOQUEADO POR QR O SELECTOR GUIADO -->
             {% if selected_advisor %}
             <div class="p-3 mb-4 rounded-4 border d-flex align-items-center gap-3 shadow-xs" style="background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border-color: #86EFAC !important;">
-                <div class="d-flex align-items-center justify-content-center rounded-circle bg-success text-white shadow-xs flex-shrink-0" style="width: 44px; height: 44px; font-size: 1.25rem;">
-                    <i class="bi bi-person-check-fill"></i>
-                </div>
+                {% if selected_advisor.photo_url %}
+                    <img src="{{ selected_advisor.photo_url }}" alt="{{ selected_advisor.full_name }}" class="rounded-circle shadow-xs flex-shrink-0" style="width: 48px; height: 48px; object-fit: cover; border: 2.5px solid #16A34A;">
+                {% else %}
+                    <div class="d-flex align-items-center justify-content-center rounded-circle bg-success text-white shadow-xs flex-shrink-0" style="width: 48px; height: 48px; font-size: 1.35rem;">
+                        <i class="bi bi-person-check-fill"></i>
+                    </div>
+                {% endif %}
                 <div class="flex-grow-1">
                     <div class="d-flex align-items-center gap-2 mb-1">
                         <span class="badge bg-success text-uppercase px-2 py-0" style="font-size: 0.65rem; letter-spacing: 0.05em;">

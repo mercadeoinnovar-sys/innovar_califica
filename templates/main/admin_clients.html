@@ -1,30 +1,33 @@
 {% extends "admin_base.html" %}
 
-{% block title %}Registro de Clientes & Pautas Publicitarias | GRUPO INNOVAR{% endblock %}
+{% block title %}Directorio Oficial de Clientes | GRUPO INNOVAR{% endblock %}
 
 {% block admin_content %}
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
     <div>
         <div class="d-flex align-items-center gap-2 mb-1">
-            <span class="badge bg-danger text-uppercase px-2 py-1" style="font-size: 0.68rem; letter-spacing: 0.05em;">Marketing & Fidelización</span>
+            <span class="badge bg-danger text-uppercase px-2 py-1" style="font-size: 0.68rem; letter-spacing: 0.05em;">Fidelización y Servicio</span>
             <span class="badge bg-dark px-2 py-1" style="font-size: 0.68rem;">Ley 1581 de 2012</span>
         </div>
-        <h2 class="fw-bold mb-0 text-dark" style="letter-spacing: -0.02em;">Base de Clientes & Pautas Publicitarias</h2>
-        <p class="text-muted small mb-0">Directorio centralizado de clientes registrados en mostrador para campañas comerciales, remarketing y sorteos.</p>
+        <h2 class="fw-bold mb-0 text-dark" style="letter-spacing: -0.02em;">Directorio Oficial de Clientes</h2>
+        <p class="text-muted small mb-0">Directorio centralizado de clientes registrados en tiendas para trazabilidad, servicio y participación en sorteos.</p>
     </div>
     <div class="d-flex align-items-center gap-2 flex-wrap">
         <button type="button" class="btn btn-outline-dark btn-sm rounded-pill px-3 shadow-xs" onclick="copyPhonesToClipboard()">
-            <i class="bi bi-clipboard-check me-1 text-danger"></i> Copiar Celulares (Meta/Google Ads)
+            <i class="bi bi-clipboard-check me-1 text-danger"></i> Copiar Celulares
         </button>
-        <a href="{% url 'export_clients_csv' %}" class="btn btn-success btn-sm rounded-pill px-3 shadow-xs">
-            <i class="bi bi-file-earmark-spreadsheet me-1"></i> Exportar para Pautas (CSV)
+        <a href="{% url 'export_clients_word' %}" class="btn btn-primary btn-sm rounded-pill px-3 shadow-xs fw-semibold" style="background: #2563EB; border-color: #2563EB;">
+            <i class="bi bi-file-earmark-word-fill me-1"></i> Descargar en Word (.docx)
+        </a>
+        <a href="{% url 'export_clients_excel' %}" class="btn btn-success btn-sm rounded-pill px-3 shadow-xs fw-semibold" style="background: #16A34A; border-color: #16A34A;">
+            <i class="bi bi-file-earmark-excel-fill me-1"></i> Descargar en Excel (.xlsx)
         </a>
     </div>
 </div>
 
 <!-- ALERT COPIED TOAST -->
 <div id="copyToast" class="alert alert-success alert-dismissible fade d-none py-2 px-3 rounded-pill shadow mb-3" role="alert">
-    <i class="bi bi-check-circle-fill me-2"></i> <strong>¡Celulares copiados!</strong> Listos para pegar en audiencias de Meta Ads, Google Ads o difusiones de WhatsApp.
+    <i class="bi bi-check-circle-fill me-2"></i> <strong>¡Celulares copiados al portapapeles!</strong> Listos para listas de difusión de WhatsApp o contactos.
 </div>
 
 <!-- TARJETAS DE MÉTRICAS KPIS -->
