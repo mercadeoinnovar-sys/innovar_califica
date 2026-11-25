@@ -769,6 +769,8 @@ def admin_reports(request):
 @login_required(login_url='admin_login')
 def admin_settings(request):
     """Módulo de Configuración general del sistema."""
+    gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
+    gemini_mode = "Vertex AI Express" if gemini_key.startswith("AQ.") else ("Google AI Studio" if gemini_key else "")
     protected_invoices_count = (
         Evaluation.objects.filter(is_valid=True, tickets_count__gt=0)
         .exclude(invoice_number_normalized="")
@@ -776,7 +778,8 @@ def admin_settings(request):
     )
     return render(request, "main/admin_settings.html", {
         "active_tab": "settings",
-        "gemini_configured": bool(os.getenv("GEMINI_API_KEY", "").strip()),
+        "gemini_configured": bool(gemini_key),
+        "gemini_mode": gemini_mode,
         "openai_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
         "protected_invoices_count": protected_invoices_count,
     })
@@ -1666,12 +1669,14 @@ def detect_receipt_ai(request):
 
         gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
         if gemini_key:
+            is_vertex_express = gemini_key.startswith("AQ.")
             for model_name in ("gemini-2.5-flash", "gemini-2.0-flash"):
                 gemini_payload = {
                     "contents": [{
+                        "role": "user",
                         "parts": [
                             {"text": vision_prompt},
-                            {"inline_data": {"mime_type": "image/jpeg", "data": b64_str}}
+                            {"inlineData": {"mimeType": "image/jpeg", "data": b64_str}}
                         ]
                     }],
                     "generationConfig": {
@@ -1679,11 +1684,17 @@ def detect_receipt_ai(request):
                         "temperature": 0.1,
                     },
                 }
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
+                if is_vertex_express:
+                    url = f"https://aiplatform.googleapis.com/v1/publishers/google/models/{model_name}:generateContent"
+                else:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
                 req_g = urllib.request.Request(
                     url,
                     data=json.dumps(gemini_payload).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
+                    headers={
+                        "Content-Type": "application/json",
+                        "x-goog-api-key": gemini_key,
+                    },
                 )
                 try:
                     with urllib.request.urlopen(req_g, timeout=12) as resp_g:
