@@ -160,6 +160,13 @@
                             {% else %}
                             <span class="text-muted fst-italic">No digitado</span>
                             {% endif %}
+                            {% if ev.invoice_cufe %}
+                            <div class="mt-1">
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" style="font-size: 0.68rem;" title="CUFE: {{ ev.invoice_cufe }}">
+                                    <i class="bi bi-qr-code me-1"></i>QR DIAN / CUFE
+                                </span>
+                            </div>
+                            {% endif %}
                         </td>
                         <td class="text-center">
                             {% if ev.invoice_photo_url %}

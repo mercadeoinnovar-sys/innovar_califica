@@ -219,10 +219,42 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
     })
 
 
+def normalize_invoice_number(raw):
+    """Normaliza un número de factura dejando solo caracteres alfanuméricos en mayúscula."""
+    return re.sub(r"[^A-Z0-9]", "", str(raw or "").upper())[:64]
+
+
+def normalize_cufe(raw):
+    """Normaliza un código CUFE/CUDE DIAN (solo hexadecimal/alfanumérico >= 20 caracteres)."""
+    cleaned = re.sub(r"[^a-z0-9]", "", str(raw or "").lower())[:128]
+    return cleaned if len(cleaned) >= 20 else ""
+
+
+def find_duplicate_invoice(norm_number, norm_cufe, exclude_eval_id=None):
+    """Verifica si una factura ya fue registrada previamente para boletas por N° o CUFE DIAN."""
+    qs = Evaluation.objects.filter(is_valid=True, tickets_count__gt=0)
+    if exclude_eval_id:
+        qs = qs.exclude(id=exclude_eval_id)
+
+    dup_q = Q()
+    has_filter = False
+    if norm_cufe:
+        dup_q |= Q(invoice_cufe=norm_cufe)
+        has_filter = True
+    if norm_number and len(norm_number) >= 3:
+        dup_q |= Q(invoice_number_normalized=norm_number)
+        dup_q |= Q(invoice_number__iexact=norm_number)
+        has_filter = True
+
+    if not has_filter:
+        return None
+    return qs.filter(dup_q).first()
+
+
 def add_invoice_to_evaluation(request, evaluation_id):
     """
     Asocia la factura escaneada o ingresada directamente a la evaluación recién completada.
-    Exige número de cédula válido únicamente en este paso para verificación en caja.
+    Exige cédula válida y número de factura único (o CUFE DIAN) para evitar duplicados.
     Asigna 1 boleta oficial por cada $1'000.000 COP facturados.
     """
     evaluation = get_object_or_404(Evaluation, id=evaluation_id)
@@ -230,24 +262,48 @@ def add_invoice_to_evaluation(request, evaluation_id):
     if request.method == "POST":
         raw_amount = request.POST.get("invoice_amount", "").strip()
         raw_number = request.POST.get("invoice_number", "").strip()
+        raw_cufe = request.POST.get("invoice_cufe", "").strip()
         raw_cedula = request.POST.get("client_cedula", "").strip() or (evaluation.client_cedula or "")
         raw_img_b64 = request.POST.get("invoice_image_base64", "").strip()
+
+        def _render_error(extra_ctx):
+            ctx = {
+                "evaluation": evaluation,
+                "advisor": evaluation.advisor,
+                "is_advisor_evaluation": True,
+                "entered_cedula": raw_cedula,
+                "entered_amount": raw_amount,
+                "entered_number": raw_number,
+                "entered_cufe": raw_cufe,
+                "auto_scroll_raffle": True,
+            }
+            ctx.update(extra_ctx)
+            return render(request, "main/thank_you.html", ctx)
 
         try:
             valid_cedula = clean_colombian_cedula(raw_cedula, required=True)
         except ValidationError as exc:
             err_msg = exc.messages[0] if getattr(exc, "messages", None) else str(exc)
             messages.error(request, err_msg)
-            return render(request, "main/thank_you.html", {
-                "evaluation": evaluation,
-                "advisor": evaluation.advisor,
-                "is_advisor_evaluation": True,
-                "cedula_error": err_msg,
-                "entered_cedula": raw_cedula,
-                "entered_amount": raw_amount,
-                "entered_number": raw_number,
-                "auto_scroll_raffle": True,
-            })
+            return _render_error({"cedula_error": err_msg})
+
+        norm_number = normalize_invoice_number(raw_number)
+        norm_cufe = normalize_cufe(raw_cufe)
+
+        if len(norm_number) < 3:
+            err_msg = "El número o consecutivo de factura es obligatorio (mínimo 3 caracteres, ej: FE-10492) para evitar duplicados."
+            messages.error(request, err_msg)
+            return _render_error({"invoice_error": err_msg})
+
+        dup = find_duplicate_invoice(norm_number, norm_cufe, exclude_eval_id=evaluation.id)
+        if dup:
+            dup_msg = (
+                f"🚫 FACTURA YA REGISTRADA: La factura {raw_number.upper()} (o su código DIAN CUFE) "
+                "ya fue utilizada previamente para generar boletas en el sorteo. Cada factura solo puede "
+                "registrarse UNA VEZ y no puede duplicarse desde otro celular."
+            )
+            messages.error(request, dup_msg)
+            return _render_error({"duplicate_error": dup_msg})
 
         # Limpiar cualquier caracter que no sea dígito en monto
         clean_amount = re.sub(r"[^\d]", "", raw_amount)
@@ -257,15 +313,24 @@ def add_invoice_to_evaluation(request, evaluation_id):
             amount = Decimal("0")
 
         evaluation.client_cedula = valid_cedula
-        update_fields = ["client_cedula", "invoice_amount", "invoice_number", "tickets_count", "ticket_codes"]
+        update_fields = [
+            "client_cedula",
+            "invoice_amount",
+            "invoice_number",
+            "invoice_number_normalized",
+            "invoice_cufe",
+            "tickets_count",
+            "ticket_codes",
+        ]
         if raw_img_b64.startswith("data:image/") and len(raw_img_b64) <= 500000:
             evaluation.invoice_image_base64 = raw_img_b64
             update_fields.append("invoice_image_base64")
 
         if amount >= Decimal("1000000"):
             evaluation.invoice_amount = amount
-            if raw_number:
-                evaluation.invoice_number = raw_number
+            evaluation.invoice_number = raw_number.upper()
+            evaluation.invoice_number_normalized = norm_number
+            evaluation.invoice_cufe = norm_cufe
             evaluation.tickets_count = int(amount // Decimal("1000000"))
             codes = [f"INV-{evaluation.id:04d}-{i+1}" for i in range(evaluation.tickets_count)]
             evaluation.ticket_codes = ", ".join(codes)
@@ -273,8 +338,9 @@ def add_invoice_to_evaluation(request, evaluation_id):
             messages.success(request, f"¡Felicitaciones! Se han generado {evaluation.tickets_count} boletas oficiales a tu nombre (CC {valid_cedula}).")
         elif amount > 0:
             evaluation.invoice_amount = amount
-            if raw_number:
-                evaluation.invoice_number = raw_number
+            evaluation.invoice_number = raw_number.upper()
+            evaluation.invoice_number_normalized = norm_number
+            evaluation.invoice_cufe = norm_cufe
             evaluation.tickets_count = 0
             evaluation.ticket_codes = ""
             evaluation.save(update_fields=update_fields)
@@ -703,8 +769,16 @@ def admin_reports(request):
 @login_required(login_url='admin_login')
 def admin_settings(request):
     """Módulo de Configuración general del sistema."""
+    protected_invoices_count = (
+        Evaluation.objects.filter(is_valid=True, tickets_count__gt=0)
+        .exclude(invoice_number_normalized="")
+        .count()
+    )
     return render(request, "main/admin_settings.html", {
         "active_tab": "settings",
+        "gemini_configured": bool(os.getenv("GEMINI_API_KEY", "").strip()),
+        "openai_configured": bool(os.getenv("OPENAI_API_KEY", "").strip()),
+        "protected_invoices_count": protected_invoices_count,
     })
 
 
@@ -1438,6 +1512,27 @@ def serve_qr_png(request, qr_id):
     return response
 
 
+def check_invoice_duplicate(request):
+    """Verifica en vivo si un N° de factura o código CUFE DIAN ya fue registrado en el sorteo."""
+    raw_number = (request.GET.get("invoice_number") or request.POST.get("invoice_number") or "").strip()
+    raw_cufe = (request.GET.get("cufe") or request.POST.get("cufe") or "").strip()
+    exclude_raw = (request.GET.get("exclude_id") or request.POST.get("exclude_id") or "").strip()
+    exclude_id = int(exclude_raw) if exclude_raw.isdigit() else None
+
+    norm_number = normalize_invoice_number(raw_number)
+    norm_cufe = normalize_cufe(raw_cufe)
+    dup = find_duplicate_invoice(norm_number, norm_cufe, exclude_eval_id=exclude_id)
+    if dup:
+        return JsonResponse({
+            "duplicate": True,
+            "message": (
+                f"🚫 FACTURA YA REGISTRADA: La factura {raw_number.upper() or dup.invoice_number} "
+                "ya fue utilizada previamente en el sorteo y está bloqueada contra duplicados."
+            ),
+        })
+    return JsonResponse({"duplicate": False, "message": ""})
+
+
 def detect_receipt_ai(request):
     """
     API con Visión / IA para escanear facturas de compra y detectar el valor TOTAL exacto.
@@ -1504,12 +1599,14 @@ def detect_receipt_ai(request):
             "de compra física o electrónica y responde ESTRICTAMENTE en JSON válido con las claves:\n"
             '{"es_factura": true|false, "total": integer_cop_o_null, '
             '"factura_numero": string_o_null, "cedula_cliente": string_solo_digitos_o_null, '
-            '"confianza": "alta"|"media"|"baja"}\n'
+            '"cufe": string_alfanumerico_o_null, "confianza": "alta"|"media"|"baja"}\n'
             "Reglas: 'total' es el valor final TOTAL A PAGAR en pesos colombianos (solo entero, sin puntos ni comas; "
             "no confundir con NIT, teléfono, fecha, subtotal, IVA o cambio). "
             "'cedula_cliente' es el número de documento/CC del comprador si aparece visible (sin dígito de verificación ni letras; "
-            "si es consumidor final 222222222222 responde null). Si la foto NO muestra una factura legible, "
-            'responde {"es_factura": false, "total": null, "factura_numero": null, "cedula_cliente": null, "confianza": "baja"}.'
+            "si es consumidor final 222222222222 responde null). "
+            "'cufe' es el código CUFE/CUDE alfanumérico largo si aparece impreso (sino null). "
+            "Si la foto NO muestra una factura legible, "
+            'responde {"es_factura": false, "total": null, "factura_numero": null, "cedula_cliente": null, "cufe": null, "confianza": "baja"}.'
         )
 
         def _parse_ai_receipt_json(raw_text):
@@ -1536,9 +1633,11 @@ def detect_receipt_ai(request):
             digits_tot = re.sub(r"[^\d]", "", raw_tot)
             total_val = int(digits_tot) if digits_tot else 0
             fac_num = str(parsed.get("factura_numero") or "").strip()
+            cufe_val = normalize_cufe(parsed.get("cufe"))
             raw_ced = re.sub(r"\D", "", str(parsed.get("cedula_cliente") or ""))
             ced_val = raw_ced if (5 <= len(raw_ced) <= 12 and len(set(raw_ced)) > 1) else ""
             conf = str(parsed.get("confianza") or "media").lower()
+            dup = find_duplicate_invoice(normalize_invoice_number(fac_num), cufe_val)
 
             if total_val > 0:
                 tickets = total_val // 1000000
@@ -1553,6 +1652,8 @@ def detect_receipt_ai(request):
                     "total": total_val,
                     "factura_numero": fac_num,
                     "cedula_cliente": ced_val,
+                    "cufe": cufe_val,
+                    "already_registered": bool(dup),
                     "tickets": tickets,
                     "confianza": conf,
                     "engine": engine_name,
@@ -1572,7 +1673,11 @@ def detect_receipt_ai(request):
                             {"text": vision_prompt},
                             {"inline_data": {"mime_type": "image/jpeg", "data": b64_str}}
                         ]
-                    }]
+                    }],
+                    "generationConfig": {
+                        "responseMimeType": "application/json",
+                        "temperature": 0.1,
+                    },
                 }
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
                 req_g = urllib.request.Request(
@@ -1581,7 +1686,7 @@ def detect_receipt_ai(request):
                     headers={"Content-Type": "application/json"},
                 )
                 try:
-                    with urllib.request.urlopen(req_g, timeout=10) as resp_g:
+                    with urllib.request.urlopen(req_g, timeout=12) as resp_g:
                         res_data = json.loads(resp_g.read().decode("utf-8"))
                         text_out = res_data["candidates"][0]["content"]["parts"][0]["text"]
                         parsed = _parse_ai_receipt_json(text_out)

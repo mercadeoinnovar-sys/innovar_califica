@@ -140,6 +140,8 @@ class Evaluation(models.Model):
     # Módulo de Sorteos Comerciales de Grupo Innovar (1 Boleta x cada $1.000.000 COP)
     invoice_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Total pagado en factura")
     invoice_number = models.CharField(max_length=60, blank=True, help_text="Número o consecutivo de factura")
+    invoice_number_normalized = models.CharField(max_length=64, blank=True, default="", db_index=True, help_text="Número de factura normalizado sin espacios ni símbolos para bloqueo de duplicados")
+    invoice_cufe = models.CharField(max_length=128, blank=True, default="", db_index=True, help_text="Código único CUFE / CUDE del QR DIAN para bloqueo antifraude")
     invoice_image = models.ImageField(upload_to="invoices/", blank=True, null=True, help_text="Foto o escaneo de la factura física")
     invoice_image_base64 = models.TextField(blank=True, default="", help_text="Foto comprimida de factura en base64 persistente para verificación en caja")
     tickets_count = models.PositiveIntegerField(default=0, help_text="Boletas asignadas (1 por cada millón)")

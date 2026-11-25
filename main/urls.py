@@ -44,8 +44,9 @@ urlpatterns = [
     path('qr/descargar/<int:qr_id>/', views.download_qr_png, name='download_qr_png'),
     path('qr/ver/<int:qr_id>/', views.serve_qr_png, name='serve_qr_png'),
 
-    # API con Visión / IA para escanear facturas
+    # API con Visión / IA para escanear facturas y bloqueo antiduplicados
     path('api/detectar-factura/', views.detect_receipt_ai, name='detect_receipt_ai'),
+    path('api/verificar-factura/', views.check_invoice_duplicate, name='check_invoice_duplicate'),
 
     # Hablador de Mostrador Imprimible en acrílico
     path('imprimir-hablador/asesor/<int:advisor_id>/', views.print_counter_display, name='print_advisor_display'),

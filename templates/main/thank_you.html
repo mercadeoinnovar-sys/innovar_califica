@@ -224,6 +224,19 @@
             <form method="post" action="{% url 'add_invoice_to_evaluation' evaluation.id %}" id="invoiceForm">
                 {% csrf_token %}
                 <input type="hidden" name="invoice_image_base64" id="id_invoice_image_base64">
+                <input type="hidden" name="invoice_cufe" id="id_invoice_cufe" value="{{ entered_cufe|default:'' }}">
+
+                {% if duplicate_error %}
+                <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3 border-2 border-danger">
+                    <i class="bi bi-shield-x me-1"></i> {{ duplicate_error }}
+                </div>
+                {% endif %}
+
+                {% if invoice_error %}
+                <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3">
+                    <i class="bi bi-exclamation-octagon-fill me-1"></i> {{ invoice_error }}
+                </div>
+                {% endif %}
 
                 {% if cedula_error %}
                 <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3">
@@ -324,12 +337,16 @@
                     <div id="fraudMismatchAlert" class="alert alert-danger py-2 px-3 small mt-2 mb-0 d-none rounded-3"></div>
                 </div>
 
-                <!-- CAMPO NÚMERO DE FACTURA (OPCIONAL) -->
+                <!-- CAMPO NÚMERO DE FACTURA (OBLIGATORIO PARA BLOQUEO DE DUPLICADOS) -->
                 <div class="mb-3">
-                    <label class="form-label small text-muted mb-1" for="id_invoice_number">
-                        <i class="bi bi-receipt text-primary me-1"></i> Número o Consecutivo de Factura (Opcional):
+                    <label class="form-label small fw-bold text-dark mb-1" for="id_invoice_number">
+                        <i class="bi bi-receipt text-primary me-1"></i> Número o Consecutivo de Factura *
+                        <span class="badge bg-dark ms-1" style="font-size: 0.62rem;">OBLIGATORIO &bull; BLOQUEO ANTIDUPLICADOS</span>
                     </label>
-                    <input type="text" name="invoice_number" id="id_invoice_number" class="form-control" placeholder="Ej: FE-10492" value="{{ entered_number|default:'' }}">
+                    <input type="text" name="invoice_number" id="id_invoice_number" class="form-control font-monospace text-uppercase" placeholder="Ej: FE-10492" value="{{ entered_number|default:'' }}" maxlength="60" required style="text-transform: uppercase;">
+                    <div id="invoice_dup_feedback" class="small mt-1" style="font-size: 0.72rem; color: #64748B;">
+                        Cada factura solo puede registrarse una vez (protegido contra registros duplicados).
+                    </div>
                 </div>
 
                 <!-- RESULTADO EN VIVO DE BOLETAS -->
@@ -486,7 +503,10 @@
     // 2. Motor OCR y Cálculo en Vivo de Boletas para Facturas
     const invoiceAmountInput = document.getElementById('id_invoice_amount');
     const invoiceNumberInput = document.getElementById('id_invoice_number');
+    const invoiceCufeInput = document.getElementById('id_invoice_cufe');
+    const invoiceDupFeedback = document.getElementById('invoice_dup_feedback');
     const raffleCedulaInput = document.getElementById('id_raffle_cedula');
+    let isInvoiceDuplicate = false;
     const raffleCedulaFeedback = document.getElementById('raffle_cedula_feedback');
     const invoiceImageB64Input = document.getElementById('id_invoice_image_base64');
     const raffleResultBox = document.getElementById('raffleResultBox');
@@ -614,6 +634,22 @@
                 e.preventDefault();
                 alert("El monto de la factura debe ser de al menos $1'000.000 COP para generar boletas oficiales de sorteo.");
                 invoiceAmountInput.focus();
+                return false;
+            }
+            const normInvNum = (invoiceNumberInput ? invoiceNumberInput.value : '').replace(/[^A-Za-z0-9]/g, '');
+            if (normInvNum.length < 3) {
+                e.preventDefault();
+                if (invoiceNumberInput) {
+                    invoiceNumberInput.classList.add('is-invalid');
+                    invoiceNumberInput.focus();
+                }
+                alert("El número o consecutivo de factura es obligatorio (mínimo 3 caracteres, ej: FE-10492) para evitar facturas duplicadas.");
+                return false;
+            }
+            if (isInvoiceDuplicate) {
+                e.preventDefault();
+                if (invoiceNumberInput) invoiceNumberInput.focus();
+                alert("🚫 Esta factura ya fue registrada previamente en el sorteo y está bloqueada contra duplicados.");
                 return false;
             }
             if (acceptAntifraudCheckbox && !acceptAntifraudCheckbox.checked) {
@@ -746,8 +782,9 @@
         const valMatch = totalMatch || baseMatch;
         const numMatch = rawQrText.match(/NumFac\s*[:=]\s*([A-Z0-9\-]+)/i);
         const docMatch = rawQrText.match(/DocAdq\s*[:=]\s*([0-9]{5,12})/i);
+        const cufeMatch = rawQrText.match(/(?:CUFE|CUDE|documentkey)\s*[:=]\s*([a-f0-9]{20,128})/i);
 
-        if (!valMatch && !numMatch) return null;
+        if (!valMatch && !numMatch && !cufeMatch) return null;
 
         let totalAmount = 0;
         if (valMatch) {
@@ -766,7 +803,8 @@
         return {
             total: totalAmount,
             factura_numero: numMatch ? numMatch[1].trim() : '',
-            cedula: cedula
+            cedula: cedula,
+            cufe: cufeMatch ? cufeMatch[1].trim().toLowerCase() : ''
         };
     }
 
@@ -783,14 +821,76 @@
         return null;
     }
 
-    function applyDetectedMetadata(facturaNumero, cedula) {
+    async function checkDuplicateInvoiceLive(invNum, cufe) {
+        const cleanNum = (invNum || '').replace(/[^A-Za-z0-9]/g, '');
+        if (cleanNum.length < 3 && (!cufe || cufe.length < 20)) {
+            isInvoiceDuplicate = false;
+            return false;
+        }
+        try {
+            const params = new URLSearchParams({
+                invoice_number: invNum || '',
+                cufe: cufe || '',
+                exclude_id: '{{ evaluation.id|default:"" }}'
+            });
+            const resp = await fetch(`/api/verificar-factura/?${params.toString()}`);
+            const data = await resp.json();
+            if (data.duplicate) {
+                isInvoiceDuplicate = true;
+                if (invoiceNumberInput) {
+                    invoiceNumberInput.classList.remove('is-valid');
+                    invoiceNumberInput.classList.add('is-invalid');
+                }
+                if (invoiceDupFeedback) {
+                    invoiceDupFeedback.textContent = data.message;
+                    invoiceDupFeedback.style.color = '#DC2626';
+                }
+                showScanAlert(data.message);
+                return true;
+            }
+            isInvoiceDuplicate = false;
+            if (invoiceNumberInput && cleanNum.length >= 3) {
+                invoiceNumberInput.classList.remove('is-invalid');
+                invoiceNumberInput.classList.add('is-valid');
+            }
+            if (invoiceDupFeedback) {
+                invoiceDupFeedback.textContent = '✓ Factura disponible (sin registros previos)';
+                invoiceDupFeedback.style.color = '#16A34A';
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    if (invoiceNumberInput) {
+        invoiceNumberInput.addEventListener('input', function() {
+            this.value = this.value.toUpperCase();
+            isInvoiceDuplicate = false;
+            this.classList.remove('is-invalid', 'is-valid');
+            if (invoiceDupFeedback) {
+                invoiceDupFeedback.textContent = 'Cada factura solo puede registrarse una vez (protegido contra registros duplicados).';
+                invoiceDupFeedback.style.color = '#64748B';
+            }
+        });
+        invoiceNumberInput.addEventListener('blur', function() {
+            checkDuplicateInvoiceLive(this.value, invoiceCufeInput ? invoiceCufeInput.value : '');
+        });
+    }
+
+    function applyDetectedMetadata(facturaNumero, cedula, cufe) {
         if (facturaNumero && invoiceNumberInput && !invoiceNumberInput.value) {
-            invoiceNumberInput.value = facturaNumero;
+            invoiceNumberInput.value = facturaNumero.toUpperCase();
+        }
+        if (cufe && invoiceCufeInput) {
+            invoiceCufeInput.value = cufe;
         }
         if (cedula && raffleCedulaInput && !raffleCedulaInput.value) {
             raffleCedulaInput.value = cedula;
             validateRaffleCedula(false);
         }
+        checkDuplicateInvoiceLive(
+            invoiceNumberInput ? invoiceNumberInput.value : facturaNumero,
+            invoiceCufeInput ? invoiceCufeInput.value : cufe
+        );
     }
 
     if (btnRescan && localCameraInput) {
@@ -836,7 +936,7 @@
                         const dian = detectDianQrOnCanvas(ocrCanvas);
                         if (dian && dian.total > 0) {
                             compressCanvasForStorage(ocrCanvas);
-                            applyDetectedMetadata(dian.factura_numero, dian.cedula);
+                            applyDetectedMetadata(dian.factura_numero, dian.cedula, dian.cufe);
                             applyScannedTotal(dian.total, 'QR DIAN Exacto');
                             if (dian.total < 1000000) {
                                 showScanAlert(`QR DIAN leído: $${dian.total.toLocaleString('es-CO')} COP. Recuerda que el mínimo para boletas es $1'000.000 COP.`);
@@ -943,7 +1043,7 @@
         // CAPA 1: Decodificador instantáneo QR DIAN
         const dian = detectDianQrOnCanvas(sourceCanvas);
         if (dian && dian.total > 0) {
-            applyDetectedMetadata(dian.factura_numero, dian.cedula);
+            applyDetectedMetadata(dian.factura_numero, dian.cedula, dian.cufe);
             applyScannedTotal(dian.total, 'QR DIAN Exacto');
             if (dian.total < 1000000) {
                 showScanAlert(`QR DIAN leído: $${dian.total.toLocaleString('es-CO')} COP. Recuerda que el monto mínimo para boletas es $1'000.000 COP.`);
@@ -980,9 +1080,11 @@
                     return;
                 }
                 if (data.total && data.total > 0) {
-                    applyDetectedMetadata(data.factura_numero, data.cedula_cliente);
+                    applyDetectedMetadata(data.factura_numero, data.cedula_cliente, data.cufe || '');
                     applyScannedTotal(data.total, 'Visión IA');
-                    if (data.total < 1000000) {
+                    if (data.already_registered) {
+                        showScanAlert('🚫 Esta factura ya fue registrada previamente en el sorteo y está bloqueada contra duplicados.');
+                    } else if (data.total < 1000000) {
                         showScanAlert(`Factura detectada: $${data.total.toLocaleString('es-CO')} COP. El mínimo para boletas es $1'000.000 COP.`);
                     }
                     finishScannerUi();
@@ -1017,7 +1119,7 @@
 
             const extractedTotal = extractInvoiceTotalFromText(text);
             const extractedNumber = extractInvoiceNumberFromText(text);
-            applyDetectedMetadata(extractedNumber, '');
+            applyDetectedMetadata(extractedNumber, '', '');
             finishScannerUi();
 
             if (extractedTotal) {
