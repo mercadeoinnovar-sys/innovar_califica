@@ -15,12 +15,12 @@
             <p class="text-muted small mb-0">Control oficial de clientes participantes, boletas asignadas y verificación de facturas escaneadas.</p>
         </div>
         <div class="d-flex gap-2">
-            <!-- BOTÓN TÓMBOLA / SACAR GANADOR -->
-            <button type="button" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 rounded-pill btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#modalTombola">
-                <i class="bi bi-trophy-fill text-danger"></i> Sortear Ganador en Vivo
+            <!-- BOTÓN RULETA / SACAR GANADOR -->
+            <button type="button" class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 rounded-pill btn-sm shadow-sm" data-bs-toggle="modal" data-bs-target="#modalRoulette">
+                <i class="bi bi-disc text-danger fs-5"></i> ¡Girar Ruleta de Sorteo!
             </button>
-            <a href="{% url 'export_evaluations_csv' %}" class="btn btn-innovar d-flex align-items-center gap-2 rounded-pill btn-sm">
-                <i class="bi bi-file-earmark-excel-fill"></i> Exportar Boletas
+            <a href="{% url 'export_raffle_excel' %}{% if selected_city or search_query %}?city={{ selected_city|urlencode }}&q={{ search_query|urlencode }}{% endif %}" class="btn btn-innovar d-flex align-items-center gap-2 rounded-pill btn-sm">
+                <i class="bi bi-file-earmark-excel-fill"></i> Exportar Boletas (.xlsx)
             </a>
         </div>
     </div>
@@ -187,7 +187,7 @@
 </div>
 
 <!-- MODAL VISOR DE FACTURA ESCANEADA (ALTA RESOLUCIÓN) -->
-<div class="modal fade" id="modalInvoiceViewer" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalInvoiceViewer" tabindex="-1" aria-hidden="true" style="z-index: 1085;">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content rounded-4 border-0 shadow">
             <div class="modal-header border-bottom py-3" style="background: linear-gradient(135deg, #111827 0%, #1F2937 100%); color: white;">
@@ -210,33 +210,193 @@
     </div>
 </div>
 
-<!-- MODAL TÓMBOLA / SORTEO DIGITAL EN VIVO -->
-<div class="modal fade" id="modalTombola" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content rounded-4 border-0 shadow text-center p-4">
-            <div class="d-inline-flex align-items-center justify-content-center rounded-circle text-white mx-auto mb-3" style="width: 70px; height: 70px; background: var(--innovar-red); font-size: 2.2rem;">
-                <i class="bi bi-trophy-fill"></i>
-            </div>
-            <h4 class="fw-bold mb-1" style="color: var(--innovar-dark);">Gran Sorteo Oficial Grupo Innovar</h4>
-            <p class="text-muted small mb-4">Selección transparente y al azar entre las boletas registradas (&ge; $1'000.000 COP).</p>
+<!-- MODAL RULETA DE LA SUERTE / GRAN SORTEO DIGITAL EN VIVO (PRO EDITION) -->
+<div class="modal fade" id="modalRoulette" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-xl" id="modalRouletteDialog">
+        <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden position-relative">
+            <!-- Canvas Confetti Overlay -->
+            <canvas id="confettiCanvas" class="position-absolute top-0 start-0 w-100 h-100" style="pointer-events: none; z-index: 1060;"></canvas>
 
-            <div class="p-4 rounded-4 bg-light border mb-4">
-                <span class="text-muted small d-block mb-1">Boleta Ganadora:</span>
-                <div class="display-6 fw-bold text-danger font-monospace mb-2" id="winnerTicketDisplay">
-                    ---
+            <!-- MODAL HEADER -->
+            <div class="modal-header border-0 py-3 px-4 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); color: white;">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle text-white shadow" style="width: 44px; height: 44px; font-size: 1.4rem; background: var(--innovar-red);">
+                        <i class="bi bi-disc-fill"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="modal-title fw-bold text-white mb-0">Gran Ruleta Oficial de Sorteo</h5>
+                            <span class="badge bg-warning text-dark fw-bold px-2 py-0" style="font-size: 0.7rem;">EN VIVO &bull; PRO</span>
+                        </div>
+                        <small class="text-white-50">Sorteo oficial entre todas las boletas registradas (&ge; $1'000.000 COP) &bull; Grupo Innovar</small>
+                    </div>
                 </div>
-                <div id="winnerClientBox" class="d-none">
-                    <h5 class="fw-bold text-dark mb-1" id="winnerNameDisplay"></h5>
-                    <span class="badge bg-success fs-6 px-3 py-1 mb-2" id="winnerPhoneDisplay"></span>
-                    <p class="small text-muted mb-0" id="winnerDetailsDisplay"></p>
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <button type="button" id="btnToggleSound" class="btn btn-sm btn-outline-warning rounded-pill px-3" title="Activar/Silenciar sonido">
+                        <i class="bi bi-volume-up-fill" id="soundIcon"></i> <span id="soundText">Sonido: ON</span>
+                    </button>
+                    <button type="button" id="btnToggleFullscreen" class="btn btn-sm btn-outline-light rounded-pill px-3" title="Pantalla completa para proyectar">
+                        <i class="bi bi-arrows-fullscreen"></i> Pantalla Completa
+                    </button>
+                    <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
             </div>
 
-            <div class="d-flex gap-2 justify-content-center">
-                <button type="button" class="btn btn-innovar btn-lg rounded-pill px-4" id="btnSpinTombola">
-                    <i class="bi bi-dice-5-fill me-1"></i> ¡Girar Tómbola y Elegir Ganador!
-                </button>
-                <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cerrar</button>
+            <!-- MODAL BODY -->
+            <div class="modal-body p-4 bg-light">
+                <div class="row g-4 align-items-start">
+                    
+                    <!-- COLUMNA IZQUIERDA: RULETA HIDPI Y LIVE TICKER -->
+                    <div class="col-lg-7 text-center">
+                        <div class="position-relative d-inline-block p-2 rounded-circle" style="background: radial-gradient(circle, #334155 0%, #0F172A 100%); box-shadow: 0 14px 44px rgba(15, 23, 42, 0.42);">
+                            <!-- Puntero indicador superior (12 en punto) -->
+                            <div id="roulettePointer" style="position: absolute; top: -16px; left: 50%; transform: translateX(-50%); z-index: 20; filter: drop-shadow(0 5px 8px rgba(0,0,0,0.65)); transition: transform 0.06s ease-out; transform-origin: top center;">
+                                <svg width="44" height="50" viewBox="0 0 42 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M21 46L5 12C3 8 6 3 11 3H31C36 3 39 8 37 12L21 46Z" fill="#E11D48" stroke="#F59E0B" stroke-width="3"/>
+                                    <circle cx="21" cy="14" r="5" fill="#FEF3C7" stroke="#D97706" stroke-width="2"/>
+                                </svg>
+                            </div>
+
+                            <!-- Canvas HiDPI 2x (1000x1000 físicos -> 500x500 lógicos) -->
+                            <canvas id="rouletteCanvas" width="1000" height="1000" style="display: block; width: 100%; max-width: 490px; aspect-ratio: 1 / 1; height: auto; border-radius: 50%;"></canvas>
+                        </div>
+
+                        <!-- Live Ticker de alta visibilidad bajo la ruleta -->
+                        <div class="mt-3 d-flex flex-column align-items-center gap-2">
+                            <div class="bg-dark text-white px-4 py-2 rounded-4 shadow-sm d-inline-flex align-items-center gap-3 flex-wrap justify-content-center border border-warning border-opacity-50" style="min-width: 310px;">
+                                <span class="badge bg-warning text-dark rounded-pill px-2 py-1">
+                                    <i class="bi bi-ticket-perforated-fill me-1"></i> <span id="rouletteTotalTickets">0</span> en juego
+                                </span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="text-white-50 small">Puntero:</span>
+                                    <span id="livePointerTicket" class="badge bg-danger font-monospace fs-6 px-2 py-1">---</span>
+                                    <span id="livePointerClient" class="fw-semibold text-warning small text-truncate" style="max-width: 190px;">---</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- COLUMNA DERECHA: PANELES DE CONTROL, GANADOR Y PODIO -->
+                    <div class="col-lg-5 d-flex flex-column gap-3">
+                        
+                        <!-- ESTADO 1: PANEL PREPARADO PARA GIRAR -->
+                        <div id="panelReady" class="card-innovar p-4 border shadow-sm text-center">
+                            <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-warning bg-opacity-25 text-warning mx-auto mb-3" style="width: 58px; height: 58px; font-size: 1.75rem;">
+                                <i class="bi bi-trophy-fill text-danger"></i>
+                            </div>
+                            <h4 class="fw-bold text-dark mb-1">¡Listo para el Gran Sorteo!</h4>
+                            <p class="text-muted small mb-3">
+                                Cada boleta asignada por compras &ge; $1'000.000 COP tiene una porción exacta en la ruleta. También puedes hacer clic en el centro dorado para girar.
+                            </p>
+
+                            <div id="emptyTicketsNotice" class="alert alert-warning py-2 px-3 small text-start d-none mb-3">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i> No quedan boletas activas en juego. Haz clic en <strong>Restaurar Boletas</strong> para reiniciar el sorteo.
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-danger btn-lg w-100 rounded-pill py-3 fw-bold shadow-lg" id="btnStartSpin" style="background: linear-gradient(135deg, #E11D48 0%, #BE123C 100%); font-size: 1.2rem;">
+                                    <i class="bi bi-play-circle-fill me-2 fs-4"></i> ¡GIRAR RULETA!
+                                </button>
+                                <button type="button" class="btn btn-outline-dark btn-sm rounded-pill py-2 fw-semibold" id="btnShuffleTickets">
+                                    <i class="bi bi-shuffle me-1"></i> Mezclar Boletas en Vivo
+                                </button>
+                            </div>
+
+                            <div class="form-check form-switch text-start mt-3 pt-2 border-top small">
+                                <input class="form-check-input" type="checkbox" role="switch" id="chkExcludeWinnerClient" checked>
+                                <label class="form-check-label text-muted" for="chkExcludeWinnerClient">
+                                    Excluir cliente ganador en el siguiente giro (evita repetir premio)
+                                </label>
+                            </div>
+
+                            <small class="text-muted d-block mt-2">
+                                <i class="bi bi-shield-lock-fill text-success me-1"></i> Selección física y angular 100% aleatoria en tiempo real
+                            </small>
+                        </div>
+
+                        <!-- ESTADO 2: PANEL GIRANDO EN VIVO -->
+                        <div id="panelSpinning" class="card-innovar p-4 border shadow-sm text-center d-none" style="background: #FFFBEB; border-color: #FCD34D !important;">
+                            <div class="spinner-border text-danger mb-3" role="status" style="width: 3.2rem; height: 3.2rem;">
+                                <span class="visually-hidden">Girando...</span>
+                            </div>
+                            <h4 class="fw-bold text-danger mb-1">¡GIRANDO LA RULETA!</h4>
+                            <p class="text-muted small mb-3">La ruleta gira a alta velocidad y desacelera progresivamente...</p>
+                            <div class="p-3 bg-white rounded-3 border shadow-xs">
+                                <span class="text-muted small d-block mb-1">Boleta bajo el puntero:</span>
+                                <div class="display-6 fw-bold text-danger font-monospace mb-1" id="spinningTicketDisplay">---</div>
+                                <div class="fw-semibold text-dark small text-truncate" id="spinningClientDisplay">---</div>
+                            </div>
+                        </div>
+
+                        <!-- ESTADO 3: PANEL GANADOR PROCLAMADO -->
+                        <div id="panelWinner" class="card-innovar p-4 border shadow text-center d-none" style="background: #FFFFFF; border: 2px solid #F59E0B !important; box-shadow: 0 10px 30px rgba(245, 158, 11, 0.25) !important;">
+                            <div class="badge bg-warning text-dark text-uppercase fw-bold px-3 py-1 mb-2" style="font-size: 0.8rem; letter-spacing: 0.05em;">
+                                🎉 ¡TENEMOS UN FELIZ GANADOR! 🎉
+                            </div>
+                            
+                            <div class="display-6 fw-bold text-danger font-monospace py-2 my-2 bg-light rounded-3 border" id="winnerTicketCode">
+                                INV-0000-0
+                            </div>
+
+                            <h4 class="fw-bold text-dark mb-1" id="winnerClientName">Nombre del Cliente</h4>
+                            <div class="text-muted small mb-3" id="winnerLocationAdvisor">Sede / Asesor</div>
+
+                            <!-- Tarjeta de detalles de compra -->
+                            <div class="bg-light p-3 rounded-3 text-start small mb-3 border">
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-muted">Valor de la Compra:</span>
+                                    <strong class="text-dark" id="winnerAmount">$0 COP</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-muted">N° de Factura:</span>
+                                    <strong class="font-monospace text-dark" id="winnerInvoiceNumber">N/A</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span class="text-muted">Teléfono / Celular:</span>
+                                    <strong class="text-success" id="winnerPhone">N/A</strong>
+                                </div>
+                            </div>
+
+                            <!-- Botones de Acción -->
+                            <div class="d-grid gap-2">
+                                <a id="winnerWhatsAppBtn" href="#" target="_blank" class="btn btn-success rounded-pill py-2 fw-semibold shadow-xs">
+                                    <i class="bi bi-whatsapp me-2 fs-5"></i> Notificar Ganador por WhatsApp
+                                </a>
+
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-outline-dark rounded-pill py-2 flex-grow-1 small" id="winnerInvoiceBtn" style="display: none;">
+                                        <i class="bi bi-receipt me-1"></i> Ver Factura
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger rounded-pill py-2 flex-grow-1 small" id="btnSpinAgain">
+                                        <i class="bi bi-arrow-repeat me-1"></i> Girar de Nuevo
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PODIO DE GANADORES DEL SORTEO (MULTI-GANADOR) -->
+                        <div id="winnersHistoryBox" class="card-innovar p-3 border shadow-sm bg-white d-none">
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                <h6 class="fw-bold mb-0 text-dark">
+                                    <i class="bi bi-award-fill text-warning me-1"></i> Podio de Ganadores del Sorteo
+                                </h6>
+                                <button type="button" id="btnResetRoulette" class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-1" style="font-size: 0.72rem;" title="Restaurar todas las boletas y limpiar podio">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Restaurar Boletas
+                                </button>
+                            </div>
+                            <div id="winnersHistoryList" class="d-flex flex-column gap-2" style="max-height: 210px; overflow-y: auto;"></div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODAL FOOTER -->
+            <div class="modal-footer border-top py-2 px-4 bg-white d-flex justify-content-between align-items-center">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i> Auditoría oficial Grupo Innovar. Toda entrega de premio se valida contra la factura física o contable registrada.
+                </small>
+                <button type="button" class="btn btn-sm btn-dark rounded-pill px-4" data-bs-dismiss="modal">Cerrar</button>
             </div>
         </div>
     </div>
@@ -245,60 +405,702 @@
 
 {% block extra_js %}
 <script>
-    // Datos de los participantes para la tómbola
-    const participants = [
-        {% for ev in raffle_entries %}
-        {% for code in ev.ticket_codes.split %}
-        {
-            ticket: "{{ code|cut:',' }}",
-            client: "{{ ev.client_name|escapejs }}",
-            phone: "{{ ev.client_phone|escapejs }}",
-            location: "{{ ev.location.name|escapejs }} ({{ ev.location.city|escapejs }})",
-            amount: "${{ ev.invoice_amount|floatformat:0|escapejs }}"
-        }{% if not forloop.last or not forloop.parentloop.last %},{% endif %}
-        {% endfor %}
-        {% endfor %}
-    ];
+    // Listado oficial de participantes y boletas
+    const allParticipants = {{ tickets_list_json|safe|default:"[]" }};
+    let activeParticipants = [...allParticipants];
+    let sessionWinners = [];
+    let lastWinner = null;
 
     function showInvoiceModal(imgUrl, clientName, amount) {
         document.getElementById('invoiceModalImg').src = imgUrl;
         document.getElementById('invoiceDownloadLink').href = imgUrl;
         document.getElementById('invoiceModalTitle').textContent = `Factura de ${clientName}`;
-        document.getElementById('invoiceModalSubtitle').textContent = `Monto registrado: $${amount} COP`;
-        new bootstrap.Modal(document.getElementById('modalInvoiceViewer')).show();
+        document.getElementById('invoiceModalSubtitle').textContent = `Monto registrado: ${amount}`;
+        const invoiceModalEl = document.getElementById('modalInvoiceViewer');
+        new bootstrap.Modal(invoiceModalEl).show();
+
+        // Si el modal de la ruleta está abierto debajo, elevar el backdrop del visor
+        if (document.getElementById('modalRoulette').classList.contains('show')) {
+            setTimeout(() => {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                if (backdrops.length > 1) {
+                    backdrops[backdrops.length - 1].style.zIndex = '1080';
+                }
+            }, 20);
+        }
     }
 
-    // Tómbola Digital
-    const btnSpin = document.getElementById('btnSpinTombola');
-    const winnerDisplay = document.getElementById('winnerTicketDisplay');
-    const winnerBox = document.getElementById('winnerClientBox');
-    const winnerName = document.getElementById('winnerNameDisplay');
-    const winnerPhone = document.getElementById('winnerPhoneDisplay');
-    const winnerDetails = document.getElementById('winnerDetailsDisplay');
+    // ==========================================
+    // MOTOR DE AUDIO SINTÉTICO (WEB AUDIO API)
+    // ==========================================
+    let soundEnabled = true;
+    let audioCtx = null;
+    let lastSoundAt = 0;
 
-    if (btnSpin) {
-        btnSpin.addEventListener('click', function() {
-            if (participants.length === 0) {
-                alert("No hay boletas registradas en este momento para realizar el sorteo.");
-                return;
+    function getAudioContext() {
+        if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) {
+                audioCtx = new AudioContextClass();
+            }
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        return audioCtx;
+    }
+
+    function playTickSound() {
+        if (!soundEnabled) return;
+        const nowMs = performance.now();
+        if (nowMs - lastSoundAt < 45) return; // Evita saturación de audio en giros rápidos
+        lastSoundAt = nowMs;
+
+        try {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(860, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(140, ctx.currentTime + 0.032);
+            gain.gain.setValueAtTime(0.22, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.032);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start();
+            osc.stop(ctx.currentTime + 0.032);
+        } catch (e) {}
+    }
+
+    function playVictorySound() {
+        if (!soundEnabled) return;
+        try {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            // Fanfarria victoriosa: C5, E5, G5, C6
+            const notes = [523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.11);
+                gain.gain.setValueAtTime(0.28, ctx.currentTime + i * 0.11);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.11 + 0.55);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(ctx.currentTime + i * 0.11);
+                osc.stop(ctx.currentTime + i * 0.11 + 0.55);
+            });
+        } catch (e) {}
+    }
+
+    const btnToggleSound = document.getElementById('btnToggleSound');
+    const soundIcon = document.getElementById('soundIcon');
+    const soundText = document.getElementById('soundText');
+
+    if (btnToggleSound) {
+        btnToggleSound.addEventListener('click', function() {
+            soundEnabled = !soundEnabled;
+            if (soundEnabled) {
+                soundIcon.className = 'bi bi-volume-up-fill';
+                soundText.textContent = 'Sonido: ON';
+                btnToggleSound.className = 'btn btn-sm btn-outline-warning rounded-pill px-3';
+                getAudioContext();
+            } else {
+                soundIcon.className = 'bi bi-volume-mute-fill';
+                soundText.textContent = 'Sonido: OFF';
+                btnToggleSound.className = 'btn btn-sm btn-outline-secondary rounded-pill px-3';
+            }
+        });
+    }
+
+    const btnToggleFullscreen = document.getElementById('btnToggleFullscreen');
+    const modalDialog = document.getElementById('modalRouletteDialog');
+
+    if (btnToggleFullscreen) {
+        btnToggleFullscreen.addEventListener('click', function() {
+            modalDialog.classList.toggle('modal-fullscreen');
+            btnToggleFullscreen.classList.toggle('btn-warning');
+            setTimeout(resizeConfetti, 80);
+        });
+    }
+
+    // ==========================================
+    // SISTEMA DE CONFETTI MULTI-CAÑÓN EN CANVAS
+    // ==========================================
+    const confettiCanvas = document.getElementById('confettiCanvas');
+    const confettiCtx = confettiCanvas ? confettiCanvas.getContext('2d') : null;
+    let confettiParticles = [];
+    let confettiAnimationId = null;
+
+    function resizeConfetti() {
+        if (!confettiCanvas) return;
+        confettiCanvas.width = confettiCanvas.parentElement.clientWidth;
+        confettiCanvas.height = confettiCanvas.parentElement.clientHeight;
+    }
+
+    function launchConfetti() {
+        if (!confettiCanvas || !confettiCtx) return;
+        resizeConfetti();
+        confettiParticles = [];
+        const colors = ['#E11D48', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#FCD34D'];
+        const W = confettiCanvas.width;
+        const H = confettiCanvas.height;
+        const origins = [
+            { x: W * 0.15, y: H * 0.65, vxMin: 2, vxMax: 12 },
+            { x: W * 0.50, y: H * 0.45, vxMin: -10, vxMax: 10 },
+            { x: W * 0.85, y: H * 0.65, vxMin: -12, vxMax: -2 }
+        ];
+
+        for (let i = 0; i < 180; i++) {
+            const o = origins[i % origins.length];
+            confettiParticles.push({
+                x: o.x + (Math.random() - 0.5) * 40,
+                y: o.y + (Math.random() - 0.5) * 30,
+                w: Math.random() * 10 + 6,
+                h: Math.random() * 8 + 4,
+                color: colors[Math.floor(Math.random() * colors.length)],
+                vx: o.vxMin + Math.random() * (o.vxMax - o.vxMin),
+                vy: -Math.random() * 16 - 5,
+                rotation: Math.random() * 360,
+                rotationSpeed: (Math.random() - 0.5) * 14,
+                opacity: 1
+            });
+        }
+
+        if (confettiAnimationId) cancelAnimationFrame(confettiAnimationId);
+
+        let frames = 0;
+        function updateConfetti() {
+            confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            let active = false;
+
+            confettiParticles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.42;
+                p.vx *= 0.985;
+                p.rotation += p.rotationSpeed;
+                if (frames > 85) p.opacity -= 0.015;
+
+                if (p.opacity > 0 && p.y < confettiCanvas.height + 20) {
+                    active = true;
+                    confettiCtx.save();
+                    confettiCtx.globalAlpha = Math.max(0, p.opacity);
+                    confettiCtx.translate(p.x, p.y);
+                    confettiCtx.rotate((p.rotation * Math.PI) / 180);
+                    confettiCtx.fillStyle = p.color;
+                    confettiCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                    confettiCtx.restore();
+                }
+            });
+
+            frames++;
+            if (active && frames < 260) {
+                confettiAnimationId = requestAnimationFrame(updateConfetti);
+            } else {
+                confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            }
+        }
+        updateConfetti();
+    }
+
+    // ==========================================
+    // RENDERIZADO HIDPI Y CONTROL DE LA RULETA
+    // ==========================================
+    const canvas = document.getElementById('rouletteCanvas');
+    const ctx = canvas ? canvas.getContext('2d') : null;
+    const pointer = document.getElementById('roulettePointer');
+
+    const totalCountEl = document.getElementById('rouletteTotalTickets');
+    const livePointerEl = document.getElementById('livePointerTicket');
+    const liveClientEl = document.getElementById('livePointerClient');
+    const spinningDisplayEl = document.getElementById('spinningTicketDisplay');
+    const spinningClientEl = document.getElementById('spinningClientDisplay');
+
+    const panelReady = document.getElementById('panelReady');
+    const panelSpinning = document.getElementById('panelSpinning');
+    const panelWinner = document.getElementById('panelWinner');
+    const emptyTicketsNotice = document.getElementById('emptyTicketsNotice');
+
+    const btnStart = document.getElementById('btnStartSpin');
+    const btnShuffle = document.getElementById('btnShuffleTickets');
+    const btnSpinAgain = document.getElementById('btnSpinAgain');
+    const btnResetRoulette = document.getElementById('btnResetRoulette');
+    const chkExcludeWinnerClient = document.getElementById('chkExcludeWinnerClient');
+
+    const winnerCodeEl = document.getElementById('winnerTicketCode');
+    const winnerNameEl = document.getElementById('winnerClientName');
+    const winnerLocationEl = document.getElementById('winnerLocationAdvisor');
+    const winnerAmountEl = document.getElementById('winnerAmount');
+    const winnerInvoiceEl = document.getElementById('winnerInvoiceNumber');
+    const winnerPhoneEl = document.getElementById('winnerPhone');
+    const winnerWhatsAppBtn = document.getElementById('winnerWhatsAppBtn');
+    const winnerInvoiceBtn = document.getElementById('winnerInvoiceBtn');
+    const winnersHistoryBox = document.getElementById('winnersHistoryBox');
+    const winnersHistoryList = document.getElementById('winnersHistoryList');
+
+    const sliceColors = [
+        '#E11D48', '#1E293B', '#D97706', '#0284C7',
+        '#059669', '#7C3AED', '#DC2626', '#0F766E',
+        '#F59E0B', '#334155'
+    ];
+
+    let currentRotation = 0; // radianes
+    let isSpinning = false;
+    let winningIndex = -1;
+    let lastTickIndex = -1;
+    let lightPhase = 0;
+    let victoryBlinkInterval = null;
+
+    function getSliceAngle() {
+        const count = activeParticipants.length;
+        return count > 0 ? (2 * Math.PI) / count : (2 * Math.PI);
+    }
+
+    function getIndexAtPointer(rotation) {
+        const count = activeParticipants.length;
+        if (count === 0) return -1;
+        const sa = getSliceAngle();
+        const normalized = (1.5 * Math.PI - (rotation % (2 * Math.PI)) + 4 * Math.PI) % (2 * Math.PI);
+        return Math.floor(normalized / sa) % count;
+    }
+
+    function drawWheel() {
+        if (!ctx) return;
+        const count = activeParticipants.length;
+        const sa = getSliceAngle();
+
+        // Espacio lógico 500x500 escalado 2x sobre canvas 1000x1000
+        const W = 500;
+        const H = 500;
+        const cx = W / 2;
+        const cy = H / 2;
+        const R = 230;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.scale(2, 2);
+
+        if (count === 0) {
+            ctx.beginPath();
+            ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+            ctx.fillStyle = '#334155';
+            ctx.fill();
+            ctx.strokeStyle = '#F59E0B';
+            ctx.lineWidth = 8;
+            ctx.stroke();
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('Sin boletas activas en juego', cx, cy);
+            ctx.restore();
+            return;
+        }
+
+        // 1. Dibujar cada sector / gajo de boleta
+        for (let i = 0; i < count; i++) {
+            const startAngle = currentRotation + i * sa;
+            const endAngle = startAngle + sa;
+
+            ctx.beginPath();
+            ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, R, startAngle, endAngle);
+            ctx.closePath();
+
+            ctx.fillStyle = sliceColors[i % sliceColors.length];
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.42)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            if (!isSpinning && winningIndex === i) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(253, 224, 71, 0.28)';
+                ctx.fill();
+                ctx.strokeStyle = '#FCD34D';
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                ctx.restore();
             }
 
-            btnSpin.disabled = true;
-            winnerBox.classList.add('d-none');
-            let counter = 0;
-            const interval = setInterval(() => {
-                const randomPick = participants[Math.floor(Math.random() * participants.length)];
-                winnerDisplay.textContent = randomPick.ticket;
-                counter++;
-                if (counter > 25) {
-                    clearInterval(interval);
-                    btnSpin.disabled = false;
-                    winnerName.textContent = randomPick.client;
-                    winnerPhone.textContent = `WhatsApp: ${randomPick.phone}`;
-                    winnerDetails.textContent = `Compra de ${randomPick.amount} en ${randomPick.location}`;
-                    winnerBox.classList.remove('d-none');
-                }
-            }, 80);
+            // 2. Etiqueta de boleta dentro del sector
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(startAngle + sa / 2);
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#FFFFFF';
+
+            let fontSize = 11.5;
+            if (count > 85) fontSize = 7.8;
+            else if (count > 50) fontSize = 9;
+            else if (count > 25) fontSize = 10;
+
+            ctx.font = `bold ${fontSize}px monospace`;
+            ctx.shadowColor = 'rgba(0,0,0,0.85)';
+            ctx.shadowBlur = 3;
+            ctx.fillText(activeParticipants[i].ticket, R - 18, 0);
+            ctx.restore();
+        }
+
+        // 3. Brillo radial 3D sutil sobre los gajos
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+        const glossGrad = ctx.createRadialGradient(cx - 50, cy - 50, 20, cx, cy, R);
+        glossGrad.addColorStop(0, 'rgba(255, 255, 255, 0.16)');
+        glossGrad.addColorStop(0.55, 'rgba(255, 255, 255, 0.02)');
+        glossGrad.addColorStop(1, 'rgba(15, 23, 42, 0.25)');
+        ctx.fillStyle = glossGrad;
+        ctx.fill();
+
+        // 4. Aro dorado exterior metálico
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+        const rimGradient = ctx.createLinearGradient(0, 0, W, H);
+        rimGradient.addColorStop(0, '#F59E0B');
+        rimGradient.addColorStop(0.5, '#FEF3C7');
+        rimGradient.addColorStop(1, '#B45309');
+        ctx.strokeStyle = rimGradient;
+        ctx.lineWidth = 14;
+        ctx.stroke();
+
+        // 5. 36 luces LED animadas alrededor del perímetro
+        const totalStuds = 36;
+        for (let s = 0; s < totalStuds; s++) {
+            const studAngle = (s * 2 * Math.PI) / totalStuds;
+            const sx = cx + (R + 1) * Math.cos(studAngle);
+            const sy = cy + (R + 1) * Math.sin(studAngle);
+            const isLit = (s + lightPhase) % 2 === 0;
+            ctx.beginPath();
+            ctx.arc(sx, sy, isLit ? 4 : 3, 0, 2 * Math.PI);
+            ctx.fillStyle = isLit ? '#FFFFFF' : '#FDE68A';
+            ctx.shadowColor = isLit ? '#FCD34D' : '#F59E0B';
+            ctx.shadowBlur = isLit ? 8 : 2;
+            ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+
+        // 6. Tapa central interactiva dorada
+        ctx.beginPath();
+        ctx.arc(cx, cy, 54, 0, 2 * Math.PI);
+        const hubGradient = ctx.createRadialGradient(cx, cy, 10, cx, cy, 54);
+        hubGradient.addColorStop(0, '#FEF3C7');
+        hubGradient.addColorStop(0.6, '#F59E0B');
+        hubGradient.addColorStop(1, '#92400E');
+        ctx.fillStyle = hubGradient;
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, 42, 0, 2 * Math.PI);
+        ctx.fillStyle = '#0F172A';
+        ctx.fill();
+
+        ctx.fillStyle = '#F59E0B';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(isSpinning ? 'INNOVAR' : 'GIRAR', cx, cy - 6);
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.fillText('SORTEO', cx, cy + 9);
+
+        ctx.restore();
+    }
+
+    function stopVictoryBlink() {
+        if (victoryBlinkInterval) {
+            clearInterval(victoryBlinkInterval);
+            victoryBlinkInterval = null;
+        }
+    }
+
+    function updateParticipantCounters() {
+        const count = activeParticipants.length;
+        if (totalCountEl) totalCountEl.textContent = count;
+        if (emptyTicketsNotice) {
+            emptyTicketsNotice.classList.toggle('d-none', count > 0);
+        }
+        if (btnStart) btnStart.disabled = count === 0;
+        if (btnShuffle) btnShuffle.disabled = count < 2;
+
+        if (count > 0) {
+            updateLivePointer(getIndexAtPointer(currentRotation));
+        } else {
+            if (livePointerEl) livePointerEl.textContent = '---';
+            if (liveClientEl) liveClientEl.textContent = 'Sin boletas';
+        }
+    }
+
+    function updateLivePointer(idx) {
+        if (idx >= 0 && idx < activeParticipants.length) {
+            const t = activeParticipants[idx];
+            if (livePointerEl) livePointerEl.textContent = t.ticket;
+            if (liveClientEl) liveClientEl.textContent = t.client;
+            if (spinningDisplayEl) spinningDisplayEl.textContent = t.ticket;
+            if (spinningClientEl) spinningClientEl.textContent = t.client;
+        }
+    }
+
+    function onPointerTick(idx) {
+        playTickSound();
+        if (pointer) {
+            pointer.style.transform = 'translateX(-50%) rotate(-15deg)';
+            setTimeout(() => {
+                pointer.style.transform = 'translateX(-50%) rotate(0deg)';
+            }, 45);
+        }
+        updateLivePointer(idx);
+    }
+
+    function easeOutQuart(t) {
+        return 1 - Math.pow(1 - t, 4);
+    }
+
+    function spinRoulette() {
+        if (isSpinning) return;
+        const count = activeParticipants.length;
+        if (count === 0) {
+            alert("No hay boletas activas en juego. Restaura las boletas para volver a sortear.");
+            return;
+        }
+
+        stopVictoryBlink();
+        getAudioContext();
+        isSpinning = true;
+        winningIndex = -1;
+        lastTickIndex = -1;
+
+        panelReady.classList.add('d-none');
+        panelWinner.classList.add('d-none');
+        panelSpinning.classList.remove('d-none');
+
+        const selectedWinner = Math.floor(Math.random() * count);
+        winningIndex = selectedWinner;
+
+        const sa = getSliceAngle();
+        // Aterrizaje orgánico dentro del gajo ganador [0.25 .. 0.75] garantizando precisión exacta
+        const sliceOffset = 0.25 + Math.random() * 0.5;
+        const targetCenter = (selectedWinner + sliceOffset) * sa;
+        const fullSpins = 8 + Math.floor(Math.random() * 4);
+
+        const startRot = ((currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+        const finalTargetRot = (1.5 * Math.PI) - targetCenter + (fullSpins * 2 * Math.PI);
+        let delta = finalTargetRot - startRot;
+        while (delta < fullSpins * 2 * Math.PI) {
+            delta += 2 * Math.PI;
+        }
+
+        const duration = 6500;
+        const startTime = performance.now();
+        let lastLightStep = 0;
+
+        function animateWheel(now) {
+            const elapsed = now - startTime;
+            const progress = Math.min(1, elapsed / duration);
+            const easedProgress = easeOutQuart(progress);
+
+            currentRotation = startRot + delta * easedProgress;
+
+            if (now - lastLightStep > 95) {
+                lightPhase = (lightPhase + 1) % 2;
+                lastLightStep = now;
+            }
+            drawWheel();
+
+            const currentIdx = getIndexAtPointer(currentRotation);
+            if (currentIdx !== lastTickIndex && currentIdx !== -1) {
+                lastTickIndex = currentIdx;
+                onPointerTick(currentIdx);
+            }
+
+            if (progress < 1) {
+                requestAnimationFrame(animateWheel);
+            } else {
+                isSpinning = false;
+                drawWheel();
+                proclaimWinner(selectedWinner);
+            }
+        }
+
+        requestAnimationFrame(animateWheel);
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+
+    function renderWinnersHistory() {
+        if (!winnersHistoryBox || !winnersHistoryList) return;
+        if (sessionWinners.length === 0) {
+            winnersHistoryBox.classList.add('d-none');
+            winnersHistoryList.innerHTML = '';
+            return;
+        }
+        winnersHistoryBox.classList.remove('d-none');
+        winnersHistoryList.innerHTML = sessionWinners.map((w, idx) => {
+            const waMsg = `¡Hola ${w.client}! 🎉 Felicitaciones de parte de GRUPO INNOVAR. Eres el ganador #${idx + 1} de nuestro Gran Sorteo Oficial con tu boleta ${w.ticket}.`;
+            const waHref = `https://wa.me/57${encodeURIComponent(w.phone || '')}?text=${encodeURIComponent(waMsg)}`;
+            return `
+                <div class="d-flex align-items-center justify-content-between p-2 rounded-3 bg-light border small">
+                    <div class="d-flex align-items-center gap-2 text-truncate me-2">
+                        <span class="badge bg-warning text-dark fw-bold">${idx + 1}°</span>
+                        <span class="badge bg-danger font-monospace">${escapeHtml(w.ticket)}</span>
+                        <div class="text-truncate">
+                            <strong class="text-dark d-block text-truncate">${escapeHtml(w.client)}</strong>
+                            <small class="text-muted">${escapeHtml(w.phone || 'Sin teléfono')}</small>
+                        </div>
+                    </div>
+                    <a href="${waHref}" target="_blank" class="btn btn-xs btn-success rounded-pill px-2 py-1 flex-shrink-0" title="Contactar por WhatsApp">
+                        <i class="bi bi-whatsapp"></i>
+                    </a>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function proclaimWinner(idx) {
+        const winner = activeParticipants[idx];
+        if (!winner) return;
+
+        lastWinner = winner;
+        sessionWinners.push(winner);
+        renderWinnersHistory();
+
+        playVictorySound();
+        launchConfetti();
+
+        // Parpadeo festivo de luces del aro al proclamar ganador
+        stopVictoryBlink();
+        let blinkCount = 0;
+        victoryBlinkInterval = setInterval(() => {
+            lightPhase = (lightPhase + 1) % 2;
+            drawWheel();
+            blinkCount++;
+            if (blinkCount > 24) stopVictoryBlink();
+        }, 180);
+
+        winnerCodeEl.textContent = winner.ticket;
+        winnerNameEl.textContent = winner.client;
+        winnerLocationEl.innerHTML = `<i class="bi bi-geo-alt-fill text-danger me-1"></i>${escapeHtml(winner.location)} &bull; <i class="bi bi-person me-1"></i>${escapeHtml(winner.advisor)}`;
+        winnerAmountEl.textContent = winner.amount;
+        winnerInvoiceEl.textContent = winner.invoice_number;
+        winnerPhoneEl.textContent = winner.phone || 'No registrado';
+
+        const msg = `¡Hola ${winner.client}! 🎉 Felicitaciones de parte de GRUPO INNOVAR. Has sido el feliz ganador de nuestro Gran Sorteo Oficial con tu boleta ${winner.ticket} por tu compra realizada en ${winner.location}. ¡Comunícate con nosotros para coordinar la entrega de tu premio! 🏆`;
+        winnerWhatsAppBtn.href = `https://wa.me/57${encodeURIComponent(winner.phone || '')}?text=${encodeURIComponent(msg)}`;
+
+        if (winner.invoice_url) {
+            winnerInvoiceBtn.style.display = 'block';
+            winnerInvoiceBtn.onclick = function() {
+                showInvoiceModal(winner.invoice_url, winner.client, winner.amount);
+            };
+        } else {
+            winnerInvoiceBtn.style.display = 'none';
+        }
+
+        panelSpinning.classList.add('d-none');
+        panelWinner.classList.remove('d-none');
+    }
+
+    // Mezclar boletas (Fisher-Yates)
+    if (btnShuffle) {
+        btnShuffle.addEventListener('click', function() {
+            if (isSpinning || activeParticipants.length < 2) return;
+            getAudioContext();
+            for (let i = activeParticipants.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [activeParticipants[i], activeParticipants[j]] = [activeParticipants[j], activeParticipants[i]];
+            }
+            winningIndex = -1;
+            playTickSound();
+            drawWheel();
+            updateParticipantCounters();
+        });
+    }
+
+    // Interacción con el centro dorado de la ruleta
+    if (canvas) {
+        function isInsideHub(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = 500 / rect.width;
+            const scaleY = 500 / rect.height;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            const dist = Math.hypot(x - 250, y - 250);
+            return dist <= 54;
+        }
+
+        canvas.addEventListener('mousemove', function(e) {
+            canvas.style.cursor = (!isSpinning && activeParticipants.length > 0 && isInsideHub(e)) ? 'pointer' : 'default';
+        });
+
+        canvas.addEventListener('click', function(e) {
+            if (!isSpinning && activeParticipants.length > 0 && isInsideHub(e)) {
+                spinRoulette();
+            }
+        });
+    }
+
+    // Girar de Nuevo (excluyendo al cliente ganador si está marcado)
+    if (btnStart) btnStart.addEventListener('click', spinRoulette);
+
+    if (btnSpinAgain) {
+        btnSpinAgain.addEventListener('click', function() {
+            stopVictoryBlink();
+            if (chkExcludeWinnerClient && chkExcludeWinnerClient.checked && lastWinner) {
+                const excludeKey = lastWinner.client_key;
+                activeParticipants = activeParticipants.filter(p => p.client_key !== excludeKey);
+                lastWinner = null;
+            }
+            panelWinner.classList.add('d-none');
+            panelReady.classList.remove('d-none');
+            winningIndex = -1;
+            drawWheel();
+            updateParticipantCounters();
+        });
+    }
+
+    // Restaurar todas las boletas y limpiar podio
+    if (btnResetRoulette) {
+        btnResetRoulette.addEventListener('click', function() {
+            if (isSpinning) return;
+            stopVictoryBlink();
+            activeParticipants = [...allParticipants];
+            sessionWinners = [];
+            lastWinner = null;
+            winningIndex = -1;
+            renderWinnersHistory();
+            panelWinner.classList.add('d-none');
+            panelReady.classList.remove('d-none');
+            drawWheel();
+            updateParticipantCounters();
+        });
+    }
+
+    // Dibujo inicial al cargar
+    drawWheel();
+    updateParticipantCounters();
+
+    const modalRoulette = document.getElementById('modalRoulette');
+    if (modalRoulette) {
+        modalRoulette.addEventListener('shown.bs.modal', function () {
+            drawWheel();
+            resizeConfetti();
+            updateParticipantCounters();
+        });
+        modalRoulette.addEventListener('hidden.bs.modal', function () {
+            stopVictoryBlink();
         });
     }
 </script>

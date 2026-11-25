@@ -35,6 +35,7 @@ urlpatterns = [
     path('admin-dashboard/clientes-pautas/', views.admin_clients, name='admin_clients_legacy'),
     path('admin-dashboard/clientes-pautas/export-csv/', views.export_clients_csv, name='export_clients_csv_legacy'),
     path('admin-dashboard/sorteos/', views.admin_raffle, name='admin_raffle'),
+    path('admin-dashboard/sorteos/export-excel/', views.export_raffle_excel, name='export_raffle_excel'),
     path('admin-dashboard/reportes/', views.admin_reports, name='admin_reports'),
     path('admin-dashboard/configuracion/', views.admin_settings, name='admin_settings'),
     path('qr-management/', views.qr_management, name='qr_management'),

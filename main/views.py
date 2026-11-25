@@ -603,6 +603,28 @@ def admin_raffle(request):
 
     cities = sorted(list({c.strip() for c in Location.objects.values_list('city', flat=True) if c}))
 
+    # Listado plano de todas las boletas individuales para la ruleta
+    tickets_list = []
+    for ev in raffle_entries:
+        if ev.ticket_codes:
+            codes = [c.strip() for c in ev.ticket_codes.split(',') if c.strip()]
+            client_name = (ev.client_name or "Cliente Anónimo").strip()
+            client_phone = (ev.client_phone or "").strip()
+            client_key = (client_phone or client_name).lower()
+            for c in codes:
+                tickets_list.append({
+                    "eval_id": ev.id,
+                    "client_key": client_key,
+                    "ticket": c,
+                    "client": client_name,
+                    "phone": client_phone,
+                    "location": f"{ev.location.name} ({ev.location.city})" if ev.location else "General",
+                    "amount": f"${ev.invoice_amount:,.0f} COP" if ev.invoice_amount else "$0 COP",
+                    "advisor": ev.advisor.full_name if ev.advisor else "Sin asesor",
+                    "invoice_url": ev.invoice_image.url if ev.invoice_image else "",
+                    "invoice_number": ev.invoice_number or "N/A"
+                })
+
     return render(request, "main/admin_raffle.html", {
         "raffle_entries": raffle_entries,
         "total_tickets": total_tickets,
@@ -612,6 +634,7 @@ def admin_raffle(request):
         "selected_city": city_filter,
         "search_query": search_query,
         "active_tab": "raffle",
+        "tickets_list_json": json.dumps(tickets_list),
     })
 
 
@@ -996,6 +1019,172 @@ def export_clients_excel(request):
     filename = f"Clientes_Grupo_Innovar_{timezone.now().strftime('%Y%m%d_%H%M')}.xlsx"
     response = HttpResponse(buf.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required(login_url='admin_login')
+def export_raffle_excel(request):
+    """Exporta el registro oficial de boletas y facturas del sorteo en formato Microsoft Excel (.xlsx)."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
+    city_filter = request.GET.get("city", "")
+    search_query = request.GET.get("q", "")
+
+    qs = Evaluation.objects.filter(is_valid=True, tickets_count__gt=0).select_related('advisor', 'location')
+    if city_filter:
+        qs = qs.filter(location__city=city_filter)
+    if search_query:
+        qs = qs.filter(
+            Q(client_name__icontains=search_query) |
+            Q(client_phone__icontains=search_query) |
+            Q(invoice_number__icontains=search_query) |
+            Q(ticket_codes__icontains=search_query) |
+            Q(advisor__full_name__icontains=search_query)
+        )
+
+    entries = list(qs.order_by('-created_at'))
+    total_entries = len(entries)
+    total_tickets_sum = sum(ev.tickets_count or 0 for ev in entries)
+    total_sales_sum = sum(float(ev.invoice_amount or 0) for ev in entries)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Boletas Sorteo"
+    ws.freeze_panes = "A5"
+
+    # Encabezado corporativo
+    ws.merge_cells("A1:K1")
+    title_cell = ws["A1"]
+    title_cell.value = "GRUPO INNOVAR - CONTROL OFICIAL DE BOLETAS Y SORTEOS"
+    title_cell.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
+    title_cell.fill = PatternFill(start_color="E11D48", end_color="E11D48", fill_type="solid")
+    title_cell.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 36
+
+    ws.merge_cells("A2:K2")
+    sub_cell = ws["A2"]
+    now_str = timezone.now().strftime("%d/%m/%Y %I:%M %p")
+    sub_cell.value = (
+        f"Generado el: {now_str} | Registros: {total_entries} | "
+        f"Boletas en juego: {total_tickets_sum} | Total facturado: ${total_sales_sum:,.0f} COP"
+    )
+    sub_cell.font = Font(name="Calibri", size=9, italic=True, color="475569")
+    sub_cell.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[2].height = 20
+
+    headers = [
+        "#",
+        "Fecha",
+        "Cliente",
+        "Celular / WhatsApp",
+        "Ciudad",
+        "Sede",
+        "Asesor",
+        "N° Factura",
+        "Valor Factura (COP)",
+        "Boletas",
+        "Códigos de Boleta",
+    ]
+    ws.append([])
+    ws.append(headers)
+    ws.row_dimensions[4].height = 28
+
+    header_font = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
+    header_fill = PatternFill(start_color="1E293B", end_color="1E293B", fill_type="solid")
+    thin_border = Border(
+        left=Side(style='thin', color='CBD5E1'),
+        right=Side(style='thin', color='CBD5E1'),
+        top=Side(style='thin', color='CBD5E1'),
+        bottom=Side(style='thin', color='CBD5E1')
+    )
+
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=4, column=col_idx)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = thin_border
+
+    zebra_fill = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
+    min_widths = [6, 18, 28, 18, 14, 28, 26, 16, 20, 11, 34]
+    col_max_lens = list(min_widths)
+
+    row_num = 5
+    for idx, ev in enumerate(entries, start=1):
+        date_str = timezone.localtime(ev.created_at).strftime("%d/%m/%Y %H:%M") if ev.created_at else ""
+        row_values = [
+            idx,
+            date_str,
+            (ev.client_name or "Cliente Anónimo").strip(),
+            (ev.client_phone or "").strip() or "No registrado",
+            ev.location.city if ev.location else "General",
+            ev.location.name if ev.location else "Sede General",
+            ev.advisor.full_name if ev.advisor else "Sin asesor",
+            ev.invoice_number or "N/A",
+            float(ev.invoice_amount or 0),
+            int(ev.tickets_count or 0),
+            ev.ticket_codes or "",
+        ]
+        ws.append(row_values)
+        ws.row_dimensions[row_num].height = 22
+
+        for col_idx, val in enumerate(row_values, start=1):
+            col_max_lens[col_idx - 1] = max(col_max_lens[col_idx - 1], len(str(val)) + 3)
+            cell = ws.cell(row=row_num, column=col_idx)
+            cell.font = Font(name="Calibri", size=10)
+            cell.border = thin_border
+            if idx % 2 == 0:
+                cell.fill = zebra_fill
+
+            if col_idx in [1, 2, 4, 8, 10]:
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+            elif col_idx == 9:
+                cell.number_format = '"$"#,##0'
+                cell.alignment = Alignment(horizontal="right", vertical="center")
+            else:
+                cell.alignment = Alignment(horizontal="left", vertical="center")
+
+        row_num += 1
+
+    # Fila resumen de totales
+    ws.append([
+        "",
+        "TOTALES",
+        f"{total_entries} registros",
+        "",
+        "",
+        "",
+        "",
+        "",
+        total_sales_sum,
+        total_tickets_sum,
+        "",
+    ])
+    ws.row_dimensions[row_num].height = 26
+    summary_fill = PatternFill(start_color="FEF2F2", end_color="FEF2F2", fill_type="solid")
+    summary_font = Font(name="Calibri", size=10, bold=True, color="991B1B")
+    for col_idx in range(1, len(headers) + 1):
+        cell = ws.cell(row=row_num, column=col_idx)
+        cell.font = summary_font
+        cell.fill = summary_fill
+        cell.border = thin_border
+        if col_idx == 9:
+            cell.number_format = '"$"#,##0'
+            cell.alignment = Alignment(horizontal="right", vertical="center")
+        elif col_idx in [2, 10]:
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+        else:
+            cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    for col_idx, width in enumerate(col_max_lens, start=1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = min(width, 48)
+
+    buf = BytesIO()
+    wb.save(buf)
+    response = HttpResponse(buf.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response['Content-Disposition'] = 'attachment; filename="Boletas_Sorteo_Grupo_Innovar.xlsx"'
     return response
 
 
