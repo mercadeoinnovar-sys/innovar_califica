@@ -82,7 +82,7 @@
             <div class="col-md-7">
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
-                    <input type="text" name="q" class="form-control border-start-0" placeholder="Buscar por cliente, WhatsApp, boleta (INV-...), factura o asesor..." value="{{ search_query }}">
+                    <input type="text" name="q" class="form-control border-start-0" placeholder="Buscar por cliente, cédula, WhatsApp, boleta (INV-...), factura o asesor..." value="{{ search_query }}">
                 </div>
             </div>
             <div class="col-md-3">
@@ -141,7 +141,10 @@
                             <small class="text-muted fw-semibold">Total: {{ ev.tickets_count }} boleta{{ ev.tickets_count|pluralize:"s" }}</small>
                         </td>
                         <td>
-                            <strong class="text-dark">{{ ev.client_name }}</strong>
+                            <strong class="text-dark d-block">{{ ev.client_name }}</strong>
+                            {% if ev.client_cedula %}
+                            <span class="badge bg-light text-dark border font-monospace mt-1" style="font-size: 0.72rem;">C.C. {{ ev.client_cedula }}</span>
+                            {% endif %}
                         </td>
                         <td>
                             <a href="https://wa.me/57{{ ev.client_phone }}?text=Hola%20{{ ev.client_name|urlencode }},%20te%20saludamos%20de%20Grupo%20Innovar.%20Tu%20compra%20ha%20sido%20registrada%20con%20éxito%20para%20el%20sorteo%20con%20las%20boletas:%20{{ ev.ticket_codes|urlencode }}." target="_blank" class="badge bg-success text-white text-decoration-none">
@@ -159,8 +162,8 @@
                             {% endif %}
                         </td>
                         <td class="text-center">
-                            {% if ev.invoice_image %}
-                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" onclick="showInvoiceModal('{{ ev.invoice_image.url }}', '{{ ev.client_name }}', '{{ ev.invoice_amount|floatformat:0 }}')">
+                            {% if ev.invoice_photo_url %}
+                            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1" data-invoice-url="{{ ev.invoice_photo_url }}" data-client-name="{{ ev.client_name }}" data-amount="${{ ev.invoice_amount|floatformat:0 }} COP" onclick="showInvoiceModalFromBtn(this)">
                                 <i class="bi bi-image me-1"></i> Ver Factura
                             </button>
                             {% else %}
@@ -344,6 +347,10 @@
                             <!-- Tarjeta de detalles de compra -->
                             <div class="bg-light p-3 rounded-3 text-start small mb-3 border">
                                 <div class="d-flex justify-content-between mb-1">
+                                    <span class="text-muted">Cédula (Verificación en Caja):</span>
+                                    <strong class="font-monospace text-dark" id="winnerCedula">---</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-1">
                                     <span class="text-muted">Valor de la Compra:</span>
                                     <strong class="text-dark" id="winnerAmount">$0 COP</strong>
                                 </div>
@@ -410,6 +417,10 @@
     let activeParticipants = [...allParticipants];
     let sessionWinners = [];
     let lastWinner = null;
+
+    function showInvoiceModalFromBtn(btn) {
+        showInvoiceModal(btn.dataset.invoiceUrl, btn.dataset.clientName, btn.dataset.amount);
+    }
 
     function showInvoiceModal(imgUrl, clientName, amount) {
         document.getElementById('invoiceModalImg').src = imgUrl;
@@ -633,6 +644,7 @@
     const winnerCodeEl = document.getElementById('winnerTicketCode');
     const winnerNameEl = document.getElementById('winnerClientName');
     const winnerLocationEl = document.getElementById('winnerLocationAdvisor');
+    const winnerCedulaEl = document.getElementById('winnerCedula');
     const winnerAmountEl = document.getElementById('winnerAmount');
     const winnerInvoiceEl = document.getElementById('winnerInvoiceNumber');
     const winnerPhoneEl = document.getElementById('winnerPhone');
@@ -993,6 +1005,7 @@
         winnerCodeEl.textContent = winner.ticket;
         winnerNameEl.textContent = winner.client;
         winnerLocationEl.innerHTML = `<i class="bi bi-geo-alt-fill text-danger me-1"></i>${escapeHtml(winner.location)} &bull; <i class="bi bi-person me-1"></i>${escapeHtml(winner.advisor)}`;
+        if (winnerCedulaEl) winnerCedulaEl.textContent = winner.cedula || 'No registrada';
         winnerAmountEl.textContent = winner.amount;
         winnerInvoiceEl.textContent = winner.invoice_number;
         winnerPhoneEl.textContent = winner.phone || 'No registrado';

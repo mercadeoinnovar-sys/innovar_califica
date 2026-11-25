@@ -1,5 +1,6 @@
 # main/views.py
 """Views for INNOVAR SERVICE - Grupo Innovar."""
+import os
 import csv
 import re
 import json
@@ -8,16 +9,17 @@ from io import BytesIO
 from decimal import Decimal
 from datetime import datetime
 import qrcode
-from PIL import Image, ImageEnhance, ImageOps
+from PIL import Image, ImageEnhance, ImageOps, ImageFilter
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import HttpResponse, JsonResponse
+from django.core.exceptions import ValidationError
 from django.db.models import Avg, Count, Q, Sum
 from django.utils import timezone
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from .models import Advisor, Evaluation, Location, Badge, QRCode
-from .forms import EvaluationForm, RaffleRegistrationForm, AdvisorForm
+from .forms import EvaluationForm, RaffleRegistrationForm, AdvisorForm, clean_colombian_cedula
 
 
 def home(request):
@@ -155,6 +157,8 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
                     evaluation.advisor = form.cleaned_data["advisor"]
                     evaluation.location = form.cleaned_data["advisor"].location
                     evaluation.client_name = form.cleaned_data["client_name"]
+                    if form.cleaned_data.get("client_cedula"):
+                        evaluation.client_cedula = form.cleaned_data["client_cedula"]
                     evaluation.client_city = form.cleaned_data.get("client_city") or evaluation.location.city
                     evaluation.attention_quality = form.cleaned_data["attention_quality"]
                     evaluation.info_clarity = form.cleaned_data["info_clarity"]
@@ -172,6 +176,7 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
                 else:
                     evaluation = form.save(commit=False)
                     evaluation.location = evaluation.advisor.location
+                    evaluation.client_cedula = form.cleaned_data.get("client_cedula") or ""
                     if not evaluation.client_city:
                         evaluation.client_city = evaluation.advisor.location.city
                     evaluation.ip_address = client_ip
@@ -186,7 +191,8 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
                 return render(request, "main/thank_you.html", {
                     "evaluation": evaluation,
                     "advisor": evaluation.advisor,
-                    "is_advisor_evaluation": True
+                    "is_advisor_evaluation": True,
+                    "auto_scroll_raffle": bool(form.cleaned_data.get("wants_raffle")),
                 })
     else:
         initial = {}
@@ -216,7 +222,7 @@ def _process_evaluation(request, selected_advisor=None, selected_location=None):
 def add_invoice_to_evaluation(request, evaluation_id):
     """
     Asocia la factura escaneada o ingresada directamente a la evaluación recién completada.
-    No solicita ni sala ni asesor (se heredan automáticamente del asesor evaluado).
+    Exige número de cédula válido únicamente en este paso para verificación en caja.
     Asigna 1 boleta oficial por cada $1'000.000 COP facturados.
     """
     evaluation = get_object_or_404(Evaluation, id=evaluation_id)
@@ -224,13 +230,37 @@ def add_invoice_to_evaluation(request, evaluation_id):
     if request.method == "POST":
         raw_amount = request.POST.get("invoice_amount", "").strip()
         raw_number = request.POST.get("invoice_number", "").strip()
+        raw_cedula = request.POST.get("client_cedula", "").strip() or (evaluation.client_cedula or "")
+        raw_img_b64 = request.POST.get("invoice_image_base64", "").strip()
 
-        # Limpiar cualquier caracter que no sea dígito
+        try:
+            valid_cedula = clean_colombian_cedula(raw_cedula, required=True)
+        except ValidationError as exc:
+            err_msg = exc.messages[0] if getattr(exc, "messages", None) else str(exc)
+            messages.error(request, err_msg)
+            return render(request, "main/thank_you.html", {
+                "evaluation": evaluation,
+                "advisor": evaluation.advisor,
+                "is_advisor_evaluation": True,
+                "cedula_error": err_msg,
+                "entered_cedula": raw_cedula,
+                "entered_amount": raw_amount,
+                "entered_number": raw_number,
+                "auto_scroll_raffle": True,
+            })
+
+        # Limpiar cualquier caracter que no sea dígito en monto
         clean_amount = re.sub(r"[^\d]", "", raw_amount)
         try:
             amount = Decimal(clean_amount) if clean_amount else Decimal("0")
         except Exception:
             amount = Decimal("0")
+
+        evaluation.client_cedula = valid_cedula
+        update_fields = ["client_cedula", "invoice_amount", "invoice_number", "tickets_count", "ticket_codes"]
+        if raw_img_b64.startswith("data:image/") and len(raw_img_b64) <= 500000:
+            evaluation.invoice_image_base64 = raw_img_b64
+            update_fields.append("invoice_image_base64")
 
         if amount >= Decimal("1000000"):
             evaluation.invoice_amount = amount
@@ -239,16 +269,18 @@ def add_invoice_to_evaluation(request, evaluation_id):
             evaluation.tickets_count = int(amount // Decimal("1000000"))
             codes = [f"INV-{evaluation.id:04d}-{i+1}" for i in range(evaluation.tickets_count)]
             evaluation.ticket_codes = ", ".join(codes)
-            evaluation.save(update_fields=["invoice_amount", "invoice_number", "tickets_count", "ticket_codes"])
-            messages.success(request, f"¡Felicitaciones! Se han generado {evaluation.tickets_count} boletas oficiales a tu nombre.")
+            evaluation.save(update_fields=update_fields)
+            messages.success(request, f"¡Felicitaciones! Se han generado {evaluation.tickets_count} boletas oficiales a tu nombre (CC {valid_cedula}).")
         elif amount > 0:
             evaluation.invoice_amount = amount
             if raw_number:
                 evaluation.invoice_number = raw_number
             evaluation.tickets_count = 0
             evaluation.ticket_codes = ""
-            evaluation.save(update_fields=["invoice_amount", "invoice_number", "tickets_count", "ticket_codes"])
+            evaluation.save(update_fields=update_fields)
             messages.warning(request, "El monto de la factura no alcanza el mínimo de $1'000.000 COP para obtener boletas del sorteo.")
+        else:
+            evaluation.save(update_fields=["client_cedula"])
 
         return render(request, "main/thank_you.html", {
             "evaluation": evaluation,
@@ -589,6 +621,7 @@ def admin_raffle(request):
         qs = qs.filter(
             Q(client_name__icontains=search_query) |
             Q(client_phone__icontains=search_query) |
+            Q(client_cedula__icontains=search_query) |
             Q(invoice_number__icontains=search_query) |
             Q(ticket_codes__icontains=search_query) |
             Q(advisor__full_name__icontains=search_query)
@@ -617,11 +650,12 @@ def admin_raffle(request):
                     "client_key": client_key,
                     "ticket": c,
                     "client": client_name,
+                    "cedula": ev.client_cedula or "No registrada",
                     "phone": client_phone,
                     "location": f"{ev.location.name} ({ev.location.city})" if ev.location else "General",
                     "amount": f"${ev.invoice_amount:,.0f} COP" if ev.invoice_amount else "$0 COP",
                     "advisor": ev.advisor.full_name if ev.advisor else "Sin asesor",
-                    "invoice_url": ev.invoice_image.url if ev.invoice_image else "",
+                    "invoice_url": ev.invoice_photo_url,
                     "invoice_number": ev.invoice_number or "N/A"
                 })
 
@@ -798,6 +832,7 @@ def _get_consolidated_clients_dict(qs=None):
             clients_dict[phone] = {
                 "name": ev.client_name or "Cliente en Mostrador",
                 "phone": phone,
+                "cedula": (ev.client_cedula or "").strip(),
                 "city": ev.location.city if ev.location else "Ibagué",
                 "location": ev.location.name if ev.location else "Mostrador General",
                 "advisor": ev.advisor.full_name if ev.advisor else "Atención en Mostrador",
@@ -814,6 +849,8 @@ def _get_consolidated_clients_dict(qs=None):
             c["visits"] += 1
             c["sales"] += float(ev.invoice_amount or 0)
             c["tickets"] += ev.tickets_count
+            if ev.client_cedula and not c["cedula"]:
+                c["cedula"] = ev.client_cedula.strip()
             if ev.ticket_codes:
                 c["codes"] = (c["codes"] + ", " + ev.ticket_codes) if c["codes"] else ev.ticket_codes
             if ev.client_name and (not c["name"] or c["name"] == "Cliente en Mostrador"):
@@ -837,6 +874,7 @@ def admin_clients(request):
         qs = qs.filter(
             Q(client_name__icontains=q) |
             Q(client_phone__icontains=q) |
+            Q(client_cedula__icontains=q) |
             Q(invoice_number__icontains=q) |
             Q(ticket_codes__icontains=q)
         )
@@ -850,6 +888,7 @@ def admin_clients(request):
             clients_dict[phone] = {
                 "client_name": ev.client_name or "Cliente en Mostrador",
                 "client_phone": phone,
+                "client_cedula": (ev.client_cedula or "").strip(),
                 "city": ev.location.city if ev.location else (ev.client_city or "Ibagué"),
                 "location_name": ev.location.name if ev.location else "Mostrador General",
                 "advisor_name": ev.advisor.full_name if ev.advisor else "Atención en Mostrador",
@@ -867,6 +906,8 @@ def admin_clients(request):
             c["total_visits"] += 1
             c["total_sales"] += float(ev.invoice_amount or 0)
             c["total_tickets"] += ev.tickets_count
+            if ev.client_cedula and not c["client_cedula"]:
+                c["client_cedula"] = ev.client_cedula.strip()
             if ev.ticket_codes:
                 if c["ticket_codes"]:
                     c["ticket_codes"] += ", " + ev.ticket_codes
@@ -916,7 +957,7 @@ def export_clients_excel(request):
     ws.title = "Clientes Registrados"
 
     # Encabezado corporativo
-    ws.merge_cells("A1:K1")
+    ws.merge_cells("A1:L1")
     title_cell = ws["A1"]
     title_cell.value = "GRUPO INNOVAR - DIRECTORIO OFICIAL DE CLIENTES REGISTRADOS"
     title_cell.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
@@ -924,7 +965,7 @@ def export_clients_excel(request):
     title_cell.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 36
 
-    ws.merge_cells("A2:K2")
+    ws.merge_cells("A2:L2")
     sub_cell = ws["A2"]
     now_str = timezone.now().strftime("%d/%m/%Y %I:%M %p")
     sub_cell.value = f"Reporte oficial para auditoría comercial y sorteos | Generado el: {now_str} | Cumplimiento Ley 1581 de 2012"
@@ -935,6 +976,7 @@ def export_clients_excel(request):
     headers = [
         "#",
         "Nombre del Cliente (Titular)",
+        "Cédula (CC)",
         "Celular / WhatsApp",
         "Ciudad",
         "Sede de Atención",
@@ -973,6 +1015,7 @@ def export_clients_excel(request):
         ws.append([
             idx,
             c["name"],
+            c.get("cedula") or "N/A",
             c["phone"],
             c["city"],
             c["location"],
@@ -992,9 +1035,9 @@ def export_clients_excel(request):
             if idx % 2 == 0:
                 cell.fill = zebra_fill
 
-            if col_idx in [1, 3, 7, 9]:
+            if col_idx in [1, 3, 4, 8, 10]:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
-            elif col_idx in [8]:
+            elif col_idx == 9:
                 cell.number_format = '"$"#,##0'
                 cell.alignment = Alignment(horizontal="right", vertical="center")
             else:
@@ -1004,15 +1047,16 @@ def export_clients_excel(request):
 
     ws.column_dimensions['A'].width = 6
     ws.column_dimensions['B'].width = 32
-    ws.column_dimensions['C'].width = 18
-    ws.column_dimensions['D'].width = 14
-    ws.column_dimensions['E'].width = 28
+    ws.column_dimensions['C'].width = 16
+    ws.column_dimensions['D'].width = 18
+    ws.column_dimensions['E'].width = 14
     ws.column_dimensions['F'].width = 28
-    ws.column_dimensions['G'].width = 10
-    ws.column_dimensions['H'].width = 22
-    ws.column_dimensions['I'].width = 14
-    ws.column_dimensions['J'].width = 30
-    ws.column_dimensions['K'].width = 24
+    ws.column_dimensions['G'].width = 28
+    ws.column_dimensions['H'].width = 10
+    ws.column_dimensions['I'].width = 22
+    ws.column_dimensions['J'].width = 14
+    ws.column_dimensions['K'].width = 30
+    ws.column_dimensions['L'].width = 24
 
     buf = BytesIO()
     wb.save(buf)
@@ -1039,6 +1083,7 @@ def export_raffle_excel(request):
         qs = qs.filter(
             Q(client_name__icontains=search_query) |
             Q(client_phone__icontains=search_query) |
+            Q(client_cedula__icontains=search_query) |
             Q(invoice_number__icontains=search_query) |
             Q(ticket_codes__icontains=search_query) |
             Q(advisor__full_name__icontains=search_query)
@@ -1055,7 +1100,7 @@ def export_raffle_excel(request):
     ws.freeze_panes = "A5"
 
     # Encabezado corporativo
-    ws.merge_cells("A1:K1")
+    ws.merge_cells("A1:L1")
     title_cell = ws["A1"]
     title_cell.value = "GRUPO INNOVAR - CONTROL OFICIAL DE BOLETAS Y SORTEOS"
     title_cell.font = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
@@ -1063,7 +1108,7 @@ def export_raffle_excel(request):
     title_cell.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 36
 
-    ws.merge_cells("A2:K2")
+    ws.merge_cells("A2:L2")
     sub_cell = ws["A2"]
     now_str = timezone.now().strftime("%d/%m/%Y %I:%M %p")
     sub_cell.value = (
@@ -1078,6 +1123,7 @@ def export_raffle_excel(request):
         "#",
         "Fecha",
         "Cliente",
+        "Cédula (CC)",
         "Celular / WhatsApp",
         "Ciudad",
         "Sede",
@@ -1108,7 +1154,7 @@ def export_raffle_excel(request):
         cell.border = thin_border
 
     zebra_fill = PatternFill(start_color="F8FAFC", end_color="F8FAFC", fill_type="solid")
-    min_widths = [6, 18, 28, 18, 14, 28, 26, 16, 20, 11, 34]
+    min_widths = [6, 18, 28, 16, 18, 14, 28, 26, 16, 20, 11, 34]
     col_max_lens = list(min_widths)
 
     row_num = 5
@@ -1118,6 +1164,7 @@ def export_raffle_excel(request):
             idx,
             date_str,
             (ev.client_name or "Cliente Anónimo").strip(),
+            (ev.client_cedula or "").strip() or "No registrada",
             (ev.client_phone or "").strip() or "No registrado",
             ev.location.city if ev.location else "General",
             ev.location.name if ev.location else "Sede General",
@@ -1138,9 +1185,9 @@ def export_raffle_excel(request):
             if idx % 2 == 0:
                 cell.fill = zebra_fill
 
-            if col_idx in [1, 2, 4, 8, 10]:
+            if col_idx in [1, 2, 4, 5, 9, 11]:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
-            elif col_idx == 9:
+            elif col_idx == 10:
                 cell.number_format = '"$"#,##0'
                 cell.alignment = Alignment(horizontal="right", vertical="center")
             else:
@@ -1158,6 +1205,7 @@ def export_raffle_excel(request):
         "",
         "",
         "",
+        "",
         total_sales_sum,
         total_tickets_sum,
         "",
@@ -1170,10 +1218,10 @@ def export_raffle_excel(request):
         cell.font = summary_font
         cell.fill = summary_fill
         cell.border = thin_border
-        if col_idx == 9:
+        if col_idx == 10:
             cell.number_format = '"$"#,##0'
             cell.alignment = Alignment(horizontal="right", vertical="center")
-        elif col_idx in [2, 10]:
+        elif col_idx in [2, 11]:
             cell.alignment = Alignment(horizontal="center", vertical="center")
         else:
             cell.alignment = Alignment(horizontal="left", vertical="center")
@@ -1432,50 +1480,155 @@ def detect_receipt_ai(request):
         if pil_img.mode in ("RGBA", "P"):
             pil_img = pil_img.convert("RGB")
 
-        max_dim = 1600
+        max_dim = 1400
         if pil_img.width > max_dim or pil_img.height > max_dim:
             pil_img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
 
-        gemini_key = os.getenv("GEMINI_API_KEY", "")
+        # Re-codificar imagen redimensionada para APIs de Visión
+        resized_buf = BytesIO()
+        pil_img.save(resized_buf, format="JPEG", quality=85)
+        resized_bytes = resized_buf.getvalue()
+        b64_str = base64.b64encode(resized_bytes).decode("utf-8")
+
+        # Imagen optimizada en alto contraste para respaldo OCR local
+        ocr_img = ImageOps.grayscale(pil_img)
+        ocr_img = ImageOps.autocontrast(ocr_img, cutoff=2)
+        ocr_img = ImageEnhance.Contrast(ocr_img).enhance(1.5)
+        ocr_img = ocr_img.filter(ImageFilter.SHARPEN)
+        ocr_buf = BytesIO()
+        ocr_img.save(ocr_buf, format="JPEG", quality=88)
+        enhanced_b64 = "data:image/jpeg;base64," + base64.b64encode(ocr_buf.getvalue()).decode("utf-8")
+
+        vision_prompt = (
+            "Eres un auditor contable de Grupo Innovar en Colombia. Analiza esta foto de recibo o factura "
+            "de compra física o electrónica y responde ESTRICTAMENTE en JSON válido con las claves:\n"
+            '{"es_factura": true|false, "total": integer_cop_o_null, '
+            '"factura_numero": string_o_null, "cedula_cliente": string_solo_digitos_o_null, '
+            '"confianza": "alta"|"media"|"baja"}\n'
+            "Reglas: 'total' es el valor final TOTAL A PAGAR en pesos colombianos (solo entero, sin puntos ni comas; "
+            "no confundir con NIT, teléfono, fecha, subtotal, IVA o cambio). "
+            "'cedula_cliente' es el número de documento/CC del comprador si aparece visible (sin dígito de verificación ni letras; "
+            "si es consumidor final 222222222222 responde null). Si la foto NO muestra una factura legible, "
+            'responde {"es_factura": false, "total": null, "factura_numero": null, "cedula_cliente": null, "confianza": "baja"}.'
+        )
+
+        def _parse_ai_receipt_json(raw_text):
+            cleaned_text = raw_text.strip()
+            if "```" in cleaned_text:
+                cleaned_text = re.sub(r"```(?:json)?", "", cleaned_text).strip()
+            m_obj = re.search(r"\{.*\}", cleaned_text, re.DOTALL)
+            if m_obj:
+                cleaned_text = m_obj.group(0)
+            return json.loads(cleaned_text)
+
+        def _build_vision_response(parsed, engine_name):
+            is_inv = parsed.get("es_factura", True)
+            if is_inv is False:
+                return JsonResponse({
+                    "success": True,
+                    "is_invoice": False,
+                    "engine": engine_name,
+                    "enhanced_image_base64": enhanced_b64,
+                    "message": "La imagen no parece ser una factura de compra legible. Acerca la cámara al total del recibo."
+                })
+
+            raw_tot = str(parsed.get("total") or "").strip()
+            digits_tot = re.sub(r"[^\d]", "", raw_tot)
+            total_val = int(digits_tot) if digits_tot else 0
+            fac_num = str(parsed.get("factura_numero") or "").strip()
+            raw_ced = re.sub(r"\D", "", str(parsed.get("cedula_cliente") or ""))
+            ced_val = raw_ced if (5 <= len(raw_ced) <= 12 and len(set(raw_ced)) > 1) else ""
+            conf = str(parsed.get("confianza") or "media").lower()
+
+            if total_val > 0:
+                tickets = total_val // 1000000
+                msg = (
+                    f"Factura analizada con IA. Total: ${total_val:,.0f} COP ({tickets} boleta(s))."
+                    if tickets >= 1
+                    else f"Factura analizada con IA: ${total_val:,.0f} COP (mínimo $1'000.000 COP para boletas)."
+                )
+                return JsonResponse({
+                    "success": True,
+                    "is_invoice": True,
+                    "total": total_val,
+                    "factura_numero": fac_num,
+                    "cedula_cliente": ced_val,
+                    "tickets": tickets,
+                    "confianza": conf,
+                    "engine": engine_name,
+                    "enhanced_image_base64": enhanced_b64,
+                    "message": msg,
+                })
+            return None
+
+        import urllib.request
+
+        gemini_key = os.getenv("GEMINI_API_KEY", "").strip()
         if gemini_key:
-            import urllib.request
-            b64_str = base64.b64encode(image_data).decode("utf-8")
-            gemini_payload = {
-                "contents": [{
-                    "parts": [
-                        {"text": "Eres un auditor contable de Grupo Innovar en Colombia. Analiza esta foto de factura de compra física y extrae: 1) 'total': valor numérico entero en COP pagado como TOTAL A PAGAR (sin decimales ni comas, ej: 1540000). 2) 'factura_numero': consecutivo o número de factura impreso (ej: 'FE-12934' o 'POS-5541'). Responde estrictamente con un JSON válido con estas dos claves. Si no hay factura o no es legible, responde {\"total\": null, \"factura_numero\": null}."},
-                        {"inline_data": {"mime_type": "image/jpeg", "data": b64_str}}
+            for model_name in ("gemini-2.5-flash", "gemini-2.0-flash"):
+                gemini_payload = {
+                    "contents": [{
+                        "parts": [
+                            {"text": vision_prompt},
+                            {"inline_data": {"mime_type": "image/jpeg", "data": b64_str}}
+                        ]
+                    }]
+                }
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}"
+                req_g = urllib.request.Request(
+                    url,
+                    data=json.dumps(gemini_payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                )
+                try:
+                    with urllib.request.urlopen(req_g, timeout=10) as resp_g:
+                        res_data = json.loads(resp_g.read().decode("utf-8"))
+                        text_out = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                        parsed = _parse_ai_receipt_json(text_out)
+                        vision_resp = _build_vision_response(parsed, "gemini_vision")
+                        if vision_resp is not None:
+                            return vision_resp
+                except Exception as e:
+                    print(f"Gemini ({model_name}) fallback:", e)
+
+        openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+        if openai_key:
+            openai_payload = {
+                "model": "gpt-4o-mini",
+                "messages": [{
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": vision_prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_str}"}}
                     ]
-                }]
+                }],
+                "max_tokens": 300,
             }
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={gemini_key}"
-            req_g = urllib.request.Request(url, data=json.dumps(gemini_payload).encode("utf-8"), headers={"Content-Type": "application/json"})
+            req_o = urllib.request.Request(
+                "https://api.openai.com/v1/chat/completions",
+                data=json.dumps(openai_payload).encode("utf-8"),
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {openai_key}",
+                },
+            )
             try:
-                with urllib.request.urlopen(req_g, timeout=8) as resp_g:
-                    res_data = json.loads(resp_g.read().decode("utf-8"))
-                    text_out = res_data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    if "```" in text_out:
-                        text_out = re.sub(r"```(?:json)?", "", text_out).strip()
-                    parsed = json.loads(text_out)
-                    total_val = int(parsed.get("total") or 0)
-                    fac_num = str(parsed.get("factura_numero") or "").strip()
-                    if total_val >= 1000000:
-                        tickets = total_val // 1000000
-                        return JsonResponse({
-                            "success": True,
-                            "total": total_val,
-                            "factura_numero": fac_num,
-                            "tickets": tickets,
-                            "engine": "gemini_vision",
-                            "message": f"Factura analizada con IA. Total: ${total_val:,.0f} COP ({tickets} boleta(s))."
-                        })
+                with urllib.request.urlopen(req_o, timeout=10) as resp_o:
+                    res_data = json.loads(resp_o.read().decode("utf-8"))
+                    text_out = res_data["choices"][0]["message"]["content"]
+                    parsed = _parse_ai_receipt_json(text_out)
+                    vision_resp = _build_vision_response(parsed, "openai_vision")
+                    if vision_resp is not None:
+                        return vision_resp
             except Exception as e:
-                print("Gemini API fallback to local parser:", e)
+                print("OpenAI Vision fallback:", e)
 
         return JsonResponse({
             "success": True,
+            "is_invoice": True,
             "engine": "client_hybrid",
-            "message": "Imagen optimizada para lectura de alta precisión."
+            "enhanced_image_base64": enhanced_b64,
+            "message": "Imagen optimizada con IA local para lectura de precisión."
         })
     except Exception as e:
         return JsonResponse({"success": False, "message": f"Error procesando la imagen: {str(e)}"}, status=500)

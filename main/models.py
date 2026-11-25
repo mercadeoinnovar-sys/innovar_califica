@@ -78,6 +78,7 @@ class Evaluation(models.Model):
     """Calificación enviada por un cliente al evaluar a un asesor."""
     client_name = models.CharField(max_length=150, blank=True)
     client_phone = models.CharField(max_length=30, blank=True)
+    client_cedula = models.CharField(max_length=25, blank=True, default="", help_text="Número de cédula del cliente (obligatorio solo para boletas y verificación en caja)")
     client_city = models.CharField(max_length=100, blank=True)
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="evaluations")
     advisor = models.ForeignKey(Advisor, on_delete=models.SET_NULL, null=True, blank=True, related_name="evaluations")
@@ -140,11 +141,24 @@ class Evaluation(models.Model):
     invoice_amount = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True, help_text="Total pagado en factura")
     invoice_number = models.CharField(max_length=60, blank=True, help_text="Número o consecutivo de factura")
     invoice_image = models.ImageField(upload_to="invoices/", blank=True, null=True, help_text="Foto o escaneo de la factura física")
+    invoice_image_base64 = models.TextField(blank=True, default="", help_text="Foto comprimida de factura en base64 persistente para verificación en caja")
     tickets_count = models.PositiveIntegerField(default=0, help_text="Boletas asignadas (1 por cada millón)")
     ticket_codes = models.CharField(max_length=255, blank=True, help_text="Números de boleta asignados (ej: BOL-1001, BOL-1002)")
 
     created_at = models.DateTimeField(default=timezone.now)
     is_valid = models.BooleanField(default=True)
+
+    @property
+    def invoice_photo_url(self):
+        """Retorna la foto de la factura en base64 persistente o URL multimedia."""
+        if self.invoice_image_base64:
+            return self.invoice_image_base64
+        if self.invoice_image and hasattr(self.invoice_image, 'url'):
+            try:
+                return self.invoice_image.url
+            except Exception:
+                pass
+        return ""
 
     class Meta:
         verbose_name = "Evaluación"

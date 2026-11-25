@@ -110,6 +110,12 @@
                     <span class="text-white-50">Titular de la Boleta:</span>
                     <strong class="text-white">{{ evaluation.client_name }}</strong>
                 </div>
+                {% if evaluation.client_cedula %}
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-white-50">Cédula (Verificación en Caja):</span>
+                    <strong class="text-warning font-monospace">{{ evaluation.client_cedula }}</strong>
+                </div>
+                {% endif %}
                 <div class="d-flex justify-content-between mb-1">
                     <span class="text-white-50">Celular Registrado:</span>
                     <span class="text-white font-monospace">{{ evaluation.client_phone }}</span>
@@ -211,48 +217,80 @@
             <!-- FORMULARIO DE REGISTRO DE FACTURA -->
             <form method="post" action="{% url 'add_invoice_to_evaluation' evaluation.id %}" id="invoiceForm">
                 {% csrf_token %}
+                <input type="hidden" name="invoice_image_base64" id="id_invoice_image_base64">
 
-                <!-- BOTONES DE CÁMARA HD Y VISOR OCR -->
+                {% if cedula_error %}
+                <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3">
+                    <i class="bi bi-exclamation-octagon-fill me-1"></i> {{ cedula_error }}
+                </div>
+                {% endif %}
+
+                <!-- BOTONES DE CÁMARA HD Y ESCÁNER QR + IA -->
                 <div class="mb-3">
                     <label class="form-label small fw-bold text-dark mb-1">
-                        <i class="bi bi-upc-scan text-danger me-1"></i> Escanear Total de Factura Física:
+                        <i class="bi bi-qr-code-scan text-danger me-1"></i> Escanear Factura con QR + IA:
                     </label>
                     <div class="row g-2">
                         <div class="col-12 col-sm-7">
                             <button type="button" class="btn btn-danger w-100 py-2 rounded-3 shadow-xs fw-bold d-flex align-items-center justify-content-center gap-2" id="btnSnapHighResDirect">
                                 <i class="bi bi-camera-fill fs-5"></i>
-                                <span>Tomar Foto / Subir Recibo</span>
+                                <span>Tomar Foto / Subir Factura</span>
                             </button>
                         </div>
                         <div class="col-12 col-sm-5">
                             <button type="button" class="btn btn-outline-dark w-100 py-2 rounded-3 shadow-xs fw-semibold d-flex align-items-center justify-content-center gap-2" id="btnOpenLiveScanner">
-                                <i class="bi bi-upc-scan text-danger"></i>
-                                <span>Visor en Vivo</span>
+                                <i class="bi bi-qr-code-scan text-danger"></i>
+                                <span>Escáner QR + IA</span>
                             </button>
                         </div>
                     </div>
+                    <small class="text-muted d-block mt-1" style="font-size: 0.72rem;">
+                        Lee al instante el <strong>QR DIAN</strong> de factura electrónica o analiza el recibo con <strong>Visión IA</strong> para calcular tus boletas.
+                    </small>
                     <input type="file" accept="image/*" capture="environment" id="localCameraInput" class="d-none">
                 </div>
 
-                <!-- ESTADO DE LECTURA POR ESCÁNER -->
+                <!-- ESTADO DE LECTURA POR ESCÁNER QR + IA -->
                 <div id="invoiceScanStatusBox" class="p-3 bg-white rounded-3 border mb-3 text-center">
                     <div id="noScanYet">
                         <div class="text-muted small">
-                            <i class="bi bi-info-circle text-secondary me-1"></i> Toma foto de tu recibo o digita el valor total de tu compra abajo:
+                            <i class="bi bi-cpu-fill text-danger me-1"></i> Apunta al QR de tu factura o toma foto del total para calcular tus boletas automáticamente:
                         </div>
                     </div>
+                    <div id="scanProcessingBox" class="d-none py-1">
+                        <span class="spinner-border spinner-border-sm text-danger me-2"></span>
+                        <span class="small fw-semibold text-dark" id="inlineScanStatusText">Analizando factura con QR + IA...</span>
+                    </div>
+                    <div id="scanAlertBox" class="alert alert-warning py-2 px-3 small text-start d-none mb-0 mt-2"></div>
                     <div id="scanDetectedBox" class="d-none text-start">
                         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                            <div>
-                                <span class="badge bg-success rounded-pill px-2 py-1 mb-1" style="font-size: 0.7rem;">
-                                    <i class="bi bi-check-circle-fill me-1"></i> Total Detectado por Escáner
-                                </span>
-                                <div class="h4 fw-bolder text-dark mb-0 font-monospace" id="displayScannedAmount">$0 COP</div>
+                            <div class="d-flex align-items-center gap-2">
+                                <div id="invoicePreviewBox" class="d-none">
+                                    <img id="invoicePreviewThumb" src="" alt="Factura capturada" class="rounded border shadow-xs" style="width: 48px; height: 48px; object-fit: cover;">
+                                </div>
+                                <div>
+                                    <span class="badge bg-success rounded-pill px-2 py-1 mb-1" id="scanEngineBadge" style="font-size: 0.7rem;">
+                                        <i class="bi bi-check-circle-fill me-1"></i> Total Detectado
+                                    </span>
+                                    <div class="h4 fw-bolder text-dark mb-0 font-monospace" id="displayScannedAmount">$0 COP</div>
+                                </div>
                             </div>
                             <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3" id="btnRescan">
                                 <i class="bi bi-arrow-repeat me-1"></i> Re-escanear
                             </button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- CAMPO CÉDULA (OBLIGATORIO SOLO PARA BOLETAS Y VERIFICACIÓN EN CAJA) -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-dark mb-1" for="id_raffle_cedula">
+                        <i class="bi bi-person-vcard-fill text-danger me-1"></i> Número de Cédula (CC) *
+                        <span class="badge bg-danger ms-1" style="font-size: 0.64rem;">OBLIGATORIO PARA VERIFICACIÓN EN CAJA</span>
+                    </label>
+                    <input type="text" name="client_cedula" id="id_raffle_cedula" class="form-control form-control-lg font-monospace" placeholder="Ej: 1110456789 (solo números)" value="{{ entered_cedula|default:evaluation.client_cedula|default:'' }}" inputmode="numeric" maxlength="12" required>
+                    <div id="raffle_cedula_feedback" class="small mt-1" style="font-size: 0.72rem; color: #64748B;">
+                        Necesaria únicamente para emitir boletas y validar tu factura en caja.
                     </div>
                 </div>
 
@@ -274,7 +312,7 @@
                     </label>
                     <div class="input-group">
                         <span class="input-group-text bg-light fw-bold text-dark">$</span>
-                        <input type="number" name="invoice_amount" id="id_invoice_amount" class="form-control form-control-lg fw-bold" placeholder="Ej: 1500000" min="1000000" step="1000" required>
+                        <input type="number" name="invoice_amount" id="id_invoice_amount" class="form-control form-control-lg fw-bold" placeholder="Ej: 1500000" min="1000000" step="1000" value="{{ entered_amount|default:'' }}" required>
                     </div>
                     <small class="text-muted" style="font-size: 0.72rem;">Mínimo $1'000.000 COP para obtener boletas oficiales.</small>
                 </div>
@@ -284,7 +322,7 @@
                     <label class="form-label small text-muted mb-1" for="id_invoice_number">
                         <i class="bi bi-receipt text-primary me-1"></i> Número o Consecutivo de Factura (Opcional):
                     </label>
-                    <input type="text" name="invoice_number" id="id_invoice_number" class="form-control" placeholder="Ej: FE-10492">
+                    <input type="text" name="invoice_number" id="id_invoice_number" class="form-control" placeholder="Ej: FE-10492" value="{{ entered_number|default:'' }}">
                 </div>
 
                 <!-- RESULTADO EN VIVO DE BOLETAS -->
@@ -342,8 +380,8 @@
         <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
             <div class="modal-header bg-dark text-white py-3">
                 <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-camera-fill text-danger fs-5"></i>
-                    <h6 class="modal-title fw-bold mb-0" id="cameraScannerModalLabel">Escanear Total de Factura</h6>
+                    <i class="bi bi-qr-code-scan text-danger fs-5"></i>
+                    <h6 class="modal-title fw-bold mb-0" id="cameraScannerModalLabel">Escáner QR DIAN + Visión IA</h6>
                 </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
@@ -351,12 +389,12 @@
                 <div class="position-relative overflow-hidden rounded-3" style="max-height: 380px; min-height: 280px; background: #000;">
                     <video id="cameraVideo" playsinline autoplay muted style="width: 100%; height: 100%; object-fit: cover;"></video>
                     <div class="position-absolute top-50 start-50 translate-middle w-75 p-3 rounded-3" style="border: 2px dashed #00FF66; background: rgba(0, 255, 102, 0.08); pointer-events: none;">
-                        <span class="badge bg-dark bg-opacity-75 text-white fw-bold px-2 py-1" style="font-size: 0.72rem;">ENFOCA AQUÍ EL TOTAL $</span>
+                        <span class="badge bg-dark bg-opacity-75 text-white fw-bold px-2 py-1" style="font-size: 0.72rem;">ENFOCA EL QR DIAN O EL TOTAL $</span>
                     </div>
                     <canvas id="ocrCanvas" class="d-none"></canvas>
                 </div>
                 <div class="mt-3 text-white">
-                    <p class="small text-white-50 mb-2">Apunta la cámara al total pagado de tu recibo físico.</p>
+                    <p class="small text-white-50 mb-2">Si tiene código QR se leerá automáticamente; si no, pulsa capturar para lectura con IA.</p>
                     <div class="d-flex flex-column align-items-center gap-2">
                         <button type="button" class="btn btn-danger btn-lg rounded-pill px-4 shadow fw-bold" id="btnCaptureFrame">
                             <i class="bi bi-upc-scan me-1"></i> Capturar y Detectar Total
@@ -391,6 +429,8 @@
 {% block extra_js %}
 <!-- HTML2CANVAS PARA DESCARGA DE BOLETA DIGITAL -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- JSQR PARA LECTURA INSTANTÁNEA DE QR DIAN EN FACTURAS -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <!-- TESSERACT OCR CLIENT-SIDE (LECTURA DE ALTA PRECISIÓN) -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
@@ -430,6 +470,10 @@
 
     // 2. Motor OCR y Cálculo en Vivo de Boletas para Facturas
     const invoiceAmountInput = document.getElementById('id_invoice_amount');
+    const invoiceNumberInput = document.getElementById('id_invoice_number');
+    const raffleCedulaInput = document.getElementById('id_raffle_cedula');
+    const raffleCedulaFeedback = document.getElementById('raffle_cedula_feedback');
+    const invoiceImageB64Input = document.getElementById('id_invoice_image_base64');
     const raffleResultBox = document.getElementById('raffleResultBox');
     const raffleTitle = document.getElementById('raffleTitle');
     const raffleSubtitle = document.getElementById('raffleSubtitle');
@@ -438,6 +482,61 @@
     const btnSubmitInvoice = document.getElementById('btnSubmitInvoice');
     const btnSubmitInvoiceIcon = document.getElementById('btnSubmitInvoiceIcon');
     const btnSubmitInvoiceText = document.getElementById('btnSubmitInvoiceText');
+
+    // Scroll automático a boletas si el cliente activó el interruptor al calificar
+    {% if auto_scroll_raffle %}
+    window.addEventListener('DOMContentLoaded', () => {
+        const target = document.getElementById('invoiceForm');
+        if (target) {
+            setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 250);
+        }
+    });
+    {% endif %}
+
+    // Validación interactiva de Cédula (solo boletas)
+    function validateRaffleCedula(showAlert) {
+        if (!raffleCedulaInput) return true;
+        const digits = raffleCedulaInput.value.replace(/\D/g, '').substring(0, 12);
+        raffleCedulaInput.value = digits;
+        const allSame = digits.length > 0 && /^(\d)\1+$/.test(digits);
+        const isValid = digits.length >= 5 && digits.length <= 12 && !allSame;
+
+        if (digits.length === 0) {
+            raffleCedulaInput.classList.remove('is-valid', 'is-invalid');
+            if (raffleCedulaFeedback) {
+                raffleCedulaFeedback.textContent = 'Necesaria únicamente para emitir boletas y validar tu factura en caja.';
+                raffleCedulaFeedback.style.color = '#64748B';
+            }
+        } else if (isValid) {
+            raffleCedulaInput.classList.remove('is-invalid');
+            raffleCedulaInput.classList.add('is-valid');
+            if (raffleCedulaFeedback) {
+                raffleCedulaFeedback.textContent = '✓ Cédula válida para verificación en caja';
+                raffleCedulaFeedback.style.color = '#16A34A';
+            }
+        } else {
+            raffleCedulaInput.classList.remove('is-valid');
+            raffleCedulaInput.classList.add('is-invalid');
+            if (raffleCedulaFeedback) {
+                raffleCedulaFeedback.textContent = allSame
+                    ? '⚠ Ingresa un número de cédula real'
+                    : `⚠ Ingresa entre 5 y 12 dígitos numéricos (llevas ${digits.length})`;
+                raffleCedulaFeedback.style.color = '#DC2626';
+            }
+        }
+
+        if (!isValid && showAlert) {
+            raffleCedulaInput.classList.add('is-invalid');
+            raffleCedulaInput.focus();
+            alert("Ingresa un número de cédula válido (5 a 12 dígitos numéricos) para registrar tus boletas y verificar en caja.");
+        }
+        return isValid;
+    }
+
+    if (raffleCedulaInput) {
+        raffleCedulaInput.addEventListener('input', () => validateRaffleCedula(false));
+        if (raffleCedulaInput.value) validateRaffleCedula(false);
+    }
 
     function updateRaffleCalculation() {
         if (!invoiceAmountInput || !raffleResultBox) return;
@@ -470,15 +569,19 @@
     document.querySelectorAll('.quick-amount-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const amt = this.getAttribute('data-amt');
-            applyScannedTotal(amt);
+            applyScannedTotal(amt, 'Monto Seleccionado');
             if (cameraModalInstance) cameraModalInstance.hide();
             stopCamera();
         });
     });
 
-    // Envío del formulario de factura
+    // Envío del formulario de factura (exige cédula + monto >= $1M)
     if (invoiceForm && btnSubmitInvoice) {
         invoiceForm.addEventListener('submit', function(e) {
+            if (!validateRaffleCedula(true)) {
+                e.preventDefault();
+                return false;
+            }
             const val = parseInt(invoiceAmountInput.value) || 0;
             if (val < 1000000) {
                 e.preventDefault();
@@ -498,7 +601,7 @@
         });
     }
 
-    // 3. Cámara y Escáner OCR
+    // 3. Cámara y Escáner 3 Capas: QR DIAN + Visión IA + OCR Mejorado
     const btnSnapHighResDirect = document.getElementById('btnSnapHighResDirect');
     const btnOpenLiveScanner = document.getElementById('btnOpenLiveScanner');
     const cameraScannerModalEl = document.getElementById('cameraScannerModal');
@@ -510,12 +613,20 @@
     const ocrCanvas = document.getElementById('ocrCanvas');
     const localCameraInput = document.getElementById('localCameraInput');
     const noScanYet = document.getElementById('noScanYet');
+    const scanProcessingBox = document.getElementById('scanProcessingBox');
+    const inlineScanStatusText = document.getElementById('inlineScanStatusText');
+    const scanAlertBox = document.getElementById('scanAlertBox');
     const scanDetectedBox = document.getElementById('scanDetectedBox');
     const displayScannedAmount = document.getElementById('displayScannedAmount');
+    const scanEngineBadge = document.getElementById('scanEngineBadge');
+    const invoicePreviewBox = document.getElementById('invoicePreviewBox');
+    const invoicePreviewThumb = document.getElementById('invoicePreviewThumb');
     const btnRescan = document.getElementById('btnRescan');
 
     let cameraStream = null;
     let cameraModalInstance = null;
+    let liveQrInterval = null;
+    let isRunningOcr = false;
 
     if (cameraScannerModalEl) {
         cameraModalInstance = new bootstrap.Modal(cameraScannerModalEl);
@@ -525,24 +636,124 @@
     }
 
     function stopCamera() {
+        if (liveQrInterval) {
+            clearInterval(liveQrInterval);
+            liveQrInterval = null;
+        }
         if (cameraStream) {
             cameraStream.getTracks().forEach(track => track.stop());
             cameraStream = null;
         }
     }
 
-    function applyScannedTotal(amount) {
-        const num = parseInt(amount) || 0;
+    function showScanAlert(message) {
+        if (!scanAlertBox) return;
+        scanAlertBox.textContent = message;
+        scanAlertBox.classList.remove('d-none');
+    }
+
+    function hideScanAlert() {
+        if (scanAlertBox) scanAlertBox.classList.add('d-none');
+    }
+
+    function compressCanvasForStorage(sourceCanvas) {
+        try {
+            const maxDim = 900;
+            let w = sourceCanvas.width;
+            let h = sourceCanvas.height;
+            if (w > maxDim || h > maxDim) {
+                const ratio = Math.min(maxDim / w, maxDim / h);
+                w = Math.round(w * ratio);
+                h = Math.round(h * ratio);
+            }
+            const tmp = document.createElement('canvas');
+            tmp.width = w;
+            tmp.height = h;
+            tmp.getContext('2d').drawImage(sourceCanvas, 0, 0, w, h);
+            const dataUrl = tmp.toDataURL('image/jpeg', 0.72);
+            if (invoiceImageB64Input && dataUrl.length <= 480000) {
+                invoiceImageB64Input.value = dataUrl;
+            }
+            if (invoicePreviewThumb && invoicePreviewBox) {
+                invoicePreviewThumb.src = dataUrl;
+                invoicePreviewBox.classList.remove('d-none');
+            }
+        } catch (e) {}
+    }
+
+    function applyScannedTotal(amount, engineLabel = 'Escáner Inteligente') {
+        const num = parseInt(amount, 10) || 0;
         if (num <= 0) return;
+        hideScanAlert();
         if (invoiceAmountInput) invoiceAmountInput.value = num;
         if (noScanYet) noScanYet.classList.add('d-none');
+        if (scanProcessingBox) scanProcessingBox.classList.add('d-none');
         if (scanDetectedBox) scanDetectedBox.classList.remove('d-none');
+        if (scanEngineBadge) {
+            scanEngineBadge.innerHTML = `<i class="bi bi-check-circle-fill me-1"></i> ${engineLabel}`;
+        }
         if (displayScannedAmount) {
             displayScannedAmount.textContent = '$' + num.toLocaleString('es-CO') + ' COP';
         }
         updateRaffleCalculation();
         if (navigator.vibrate) {
             try { navigator.vibrate([60, 40, 80]); } catch(e) {}
+        }
+    }
+
+    // Decodificador de QR DIAN Colombia (Factura Electrónica)
+    function parseDianQrPayload(rawQrText) {
+        if (!rawQrText) return null;
+        // Priorizar siempre ValTolFac / TotFac (valor total con IVA) sobre ValFac (base gravable)
+        const totalMatch = rawQrText.match(/(?:ValTolFac|TotFac)\s*[:=]\s*([0-9]+(?:[.,][0-9]+)?)/i);
+        const baseMatch = rawQrText.match(/ValFac\s*[:=]\s*([0-9]+(?:[.,][0-9]+)?)/i);
+        const valMatch = totalMatch || baseMatch;
+        const numMatch = rawQrText.match(/NumFac\s*[:=]\s*([A-Z0-9\-]+)/i);
+        const docMatch = rawQrText.match(/DocAdq\s*[:=]\s*([0-9]{5,12})/i);
+
+        if (!valMatch && !numMatch) return null;
+
+        let totalAmount = 0;
+        if (valMatch) {
+            const rawNum = valMatch[1].replace(/,/g, '.');
+            totalAmount = Math.round(parseFloat(rawNum) || 0);
+        }
+
+        let cedula = '';
+        if (docMatch) {
+            const c = docMatch[1].replace(/\D/g, '');
+            if (c.length >= 5 && c.length <= 12 && !/^(\d)\1+$/.test(c) && c !== '222222222222') {
+                cedula = c;
+            }
+        }
+
+        return {
+            total: totalAmount,
+            factura_numero: numMatch ? numMatch[1].trim() : '',
+            cedula: cedula
+        };
+    }
+
+    function detectDianQrOnCanvas(sourceCanvas) {
+        if (typeof jsQR === 'undefined' || !sourceCanvas || !sourceCanvas.width || !sourceCanvas.height) return null;
+        try {
+            const ctx = sourceCanvas.getContext('2d', { willReadFrequently: true });
+            const imgData = ctx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
+            const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'attemptBoth' });
+            if (code && code.data) {
+                return parseDianQrPayload(code.data);
+            }
+        } catch (e) {}
+        return null;
+    }
+
+    function applyDetectedMetadata(facturaNumero, cedula) {
+        if (facturaNumero && invoiceNumberInput && !invoiceNumberInput.value) {
+            invoiceNumberInput.value = facturaNumero;
+        }
+        if (cedula && raffleCedulaInput && !raffleCedulaInput.value) {
+            raffleCedulaInput.value = cedula;
+            validateRaffleCedula(false);
         }
     }
 
@@ -577,6 +788,27 @@
                 }).then(stream => {
                     cameraStream = stream;
                     if (cameraVideo) cameraVideo.srcObject = stream;
+
+                    // Lectura automática de QR DIAN en vivo cada 300ms
+                    if (liveQrInterval) clearInterval(liveQrInterval);
+                    liveQrInterval = setInterval(() => {
+                        if (isRunningOcr || !cameraVideo || cameraVideo.readyState < 2 || !ocrCanvas) return;
+                        const ctx = ocrCanvas.getContext('2d');
+                        ocrCanvas.width = cameraVideo.videoWidth || 1280;
+                        ocrCanvas.height = cameraVideo.videoHeight || 720;
+                        ctx.drawImage(cameraVideo, 0, 0, ocrCanvas.width, ocrCanvas.height);
+                        const dian = detectDianQrOnCanvas(ocrCanvas);
+                        if (dian && dian.total > 0) {
+                            compressCanvasForStorage(ocrCanvas);
+                            applyDetectedMetadata(dian.factura_numero, dian.cedula);
+                            applyScannedTotal(dian.total, 'QR DIAN Exacto');
+                            if (dian.total < 1000000) {
+                                showScanAlert(`QR DIAN leído: $${dian.total.toLocaleString('es-CO')} COP. Recuerda que el mínimo para boletas es $1'000.000 COP.`);
+                            }
+                            stopCamera();
+                            if (cameraModalInstance) cameraModalInstance.hide();
+                        }
+                    }, 300);
                 }).catch(err => {
                     if (cameraModalInstance) cameraModalInstance.hide();
                     if (localCameraInput) localCameraInput.click();
@@ -585,6 +817,12 @@
                 localCameraInput.click();
             }
         });
+    }
+
+    function extractInvoiceNumberFromText(rawText) {
+        if (!rawText) return '';
+        const match = rawText.match(/(?:FACTURA\s*(?:ELECTR[ÓO]NICA|DE\s*VENTA)?\s*(?:N[°ºo.]*)?|FE|FV|POS)\s*[:#\-]?\s*([A-Z]{0,5}\-?\d{3,10})/i);
+        return match && match[1] ? match[1].trim() : '';
     }
 
     function extractInvoiceTotalFromText(rawText) {
@@ -643,75 +881,125 @@
         return candidates[0].amount;
     }
 
-    function runRealOCR(sourceCanvas) {
+    async function runRealOCR(sourceCanvas) {
+        isRunningOcr = true;
+        hideScanAlert();
+        if (noScanYet) noScanYet.classList.add('d-none');
+        if (scanProcessingBox) scanProcessingBox.classList.remove('d-none');
+        if (inlineScanStatusText) inlineScanStatusText.textContent = 'Buscando QR DIAN y analizando factura con IA...';
         if (ocrScanningStatus) {
             ocrScanningStatus.classList.remove('d-none');
-            if (ocrStatusText) ocrStatusText.textContent = 'Analizando factura con detector inteligente...';
+            if (ocrStatusText) ocrStatusText.textContent = 'Buscando QR DIAN y analizando factura con IA...';
         }
 
-        // 1. Invocar detector asistido por servidor/IA en segundo plano
+        // Guardar miniatura comprimida para auditoría en caja
+        compressCanvasForStorage(sourceCanvas);
+
+        const finishScannerUi = () => {
+            isRunningOcr = false;
+            stopCamera();
+            if (cameraModalInstance) cameraModalInstance.hide();
+            if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
+            if (scanProcessingBox) scanProcessingBox.classList.add('d-none');
+            if (btnCaptureFrame) btnCaptureFrame.disabled = false;
+        };
+
+        // CAPA 1: Decodificador instantáneo QR DIAN
+        const dian = detectDianQrOnCanvas(sourceCanvas);
+        if (dian && dian.total > 0) {
+            applyDetectedMetadata(dian.factura_numero, dian.cedula);
+            applyScannedTotal(dian.total, 'QR DIAN Exacto');
+            if (dian.total < 1000000) {
+                showScanAlert(`QR DIAN leído: $${dian.total.toLocaleString('es-CO')} COP. Recuerda que el monto mínimo para boletas es $1'000.000 COP.`);
+            }
+            finishScannerUi();
+            return;
+        }
+
+        // CAPA 2: Visión IA en Servidor (/api/detectar-factura/)
+        let enhancedDataUrl = null;
         try {
             const b64Data = sourceCanvas.toDataURL('image/jpeg', 0.85);
             const csrfTokenEl = document.querySelector('[name=csrfmiddlewaretoken]');
             const csrfToken = csrfTokenEl ? csrfTokenEl.value : '';
 
-            fetch('/api/detectar-factura/', {
+            const resp = await fetch('/api/detectar-factura/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': csrfToken
                 },
                 body: JSON.stringify({ image_base64: b64Data })
-            }).then(res => res.json()).then(data => {
-                if (data.success && data.total && data.total >= 1000000) {
-                    applyScannedTotal(data.total);
-                    const idInvoiceNumber = document.getElementById('id_invoice_number');
-                    if (data.factura_numero && idInvoiceNumber && !idInvoiceNumber.value) {
-                        idInvoiceNumber.value = data.factura_numero;
-                    }
-                    stopCamera();
-                    if (cameraModalInstance) cameraModalInstance.hide();
-                    if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
-                    if (btnCaptureFrame) btnCaptureFrame.disabled = false;
+            });
+            const data = await resp.json();
+            if (data.enhanced_image_base64) {
+                enhancedDataUrl = data.enhanced_image_base64;
+            }
+
+            if (data.success && (data.engine === 'gemini_vision' || data.engine === 'openai_vision')) {
+                if (data.is_invoice === false) {
+                    finishScannerUi();
+                    if (noScanYet) noScanYet.classList.remove('d-none');
+                    showScanAlert(data.message || 'La imagen no parece ser una factura legible. Enfoca el total o digítalo abajo.');
                     return;
                 }
-            }).catch(err => {
-                console.log("AI detection fallback to local OCR:", err);
-            });
-        } catch(e) {
-            console.warn(e);
-        }
-
-        if (typeof Tesseract === 'undefined') return;
-
-        Tesseract.recognize(sourceCanvas, 'spa+eng', {
-            logger: m => {
-                if (m.status === 'recognizing text' && ocrStatusText) {
-                    const pct = Math.round((m.progress || 0) * 100);
-                    ocrStatusText.textContent = `Leyendo números de factura: ${pct}%...`;
+                if (data.total && data.total > 0) {
+                    applyDetectedMetadata(data.factura_numero, data.cedula_cliente);
+                    applyScannedTotal(data.total, 'Visión IA');
+                    if (data.total < 1000000) {
+                        showScanAlert(`Factura detectada: $${data.total.toLocaleString('es-CO')} COP. El mínimo para boletas es $1'000.000 COP.`);
+                    }
+                    finishScannerUi();
+                    return;
                 }
             }
-        }).then(({ data: { text } }) => {
-            stopCamera();
-            if (cameraModalInstance) cameraModalInstance.hide();
-            if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
-            if (btnCaptureFrame) btnCaptureFrame.disabled = false;
+        } catch (e) {
+            console.log("AI Vision fallback to local OCR:", e);
+        }
+
+        // CAPA 3: OCR Mejorado local (Tesseract.js) con imagen optimizada
+        if (typeof Tesseract === 'undefined') {
+            finishScannerUi();
+            if (noScanYet) noScanYet.classList.remove('d-none');
+            showScanAlert('No pudimos leer el monto automáticamente. Por favor digita el total de tu factura abajo.');
+            if (invoiceAmountInput) invoiceAmountInput.focus();
+            return;
+        }
+
+        try {
+            const ocrTarget = enhancedDataUrl || sourceCanvas;
+            const { data: { text } } = await Tesseract.recognize(ocrTarget, 'spa+eng', {
+                logger: m => {
+                    if (m.status === 'recognizing text') {
+                        const pct = Math.round((m.progress || 0) * 100);
+                        const msg = `Leyendo valores de factura: ${pct}%...`;
+                        if (ocrStatusText) ocrStatusText.textContent = msg;
+                        if (inlineScanStatusText) inlineScanStatusText.textContent = msg;
+                    }
+                }
+            });
 
             const extractedTotal = extractInvoiceTotalFromText(text);
+            const extractedNumber = extractInvoiceNumberFromText(text);
+            applyDetectedMetadata(extractedNumber, '');
+            finishScannerUi();
+
             if (extractedTotal) {
-                applyScannedTotal(extractedTotal);
+                applyScannedTotal(extractedTotal, 'Escáner Inteligente');
+                if (extractedTotal < 1000000) {
+                    showScanAlert(`Monto leído: $${extractedTotal.toLocaleString('es-CO')} COP. Recuerda que necesitas mínimo $1'000.000 COP para boletas.`);
+                }
             } else {
-                const promptVal = prompt("Ingresa el total que aparece en tu factura (COP):", "1250000");
-                if (promptVal) applyScannedTotal(parseInt(promptVal.replace(/\D/g, ''), 10) || 0);
+                if (noScanYet) noScanYet.classList.remove('d-none');
+                showScanAlert('No pudimos leer claramente el total. Verifica la foto o digita el valor exacto en el campo "Total Pagado".');
+                if (invoiceAmountInput) invoiceAmountInput.focus();
             }
-        }).catch(err => {
-            stopCamera();
-            if (cameraModalInstance) cameraModalInstance.hide();
-            if (ocrScanningStatus) ocrScanningStatus.classList.add('d-none');
-            if (btnCaptureFrame) btnCaptureFrame.disabled = false;
-            const promptVal = prompt("Ingresa el total que aparece en tu factura (COP):", "1250000");
-            if (promptVal) applyScannedTotal(parseInt(promptVal.replace(/\D/g, ''), 10) || 0);
-        });
+        } catch (err) {
+            finishScannerUi();
+            if (noScanYet) noScanYet.classList.remove('d-none');
+            showScanAlert('Ocurrió un inconveniente al leer la imagen. Por favor digita el valor total de tu factura manualmente.');
+            if (invoiceAmountInput) invoiceAmountInput.focus();
+        }
     }
 
     if (btnCaptureFrame) {

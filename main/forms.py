@@ -40,6 +40,28 @@ def clean_colombian_phone(phone_raw):
     return digits
 
 
+def clean_colombian_cedula(cedula_raw, required=True):
+    """
+    Valida un número de cédula / documento colombiano para verificación en caja.
+    Permite 5 a 12 dígitos numéricos y rechaza secuencias repetidas falsas.
+    """
+    digits = re.sub(r"\D", "", str(cedula_raw or "").strip())
+    if not digits:
+        if required:
+            raise forms.ValidationError("El número de cédula es obligatorio para generar boletas y verificar en caja.")
+        return ""
+
+    if len(digits) < 5 or len(digits) > 12:
+        raise forms.ValidationError(
+            f"La cédula debe tener entre 5 y 12 dígitos numéricos (ingresaste {len(digits)})."
+        )
+
+    if len(set(digits)) == 1:
+        raise forms.ValidationError("Por favor ingresa un número de cédula real y válido.")
+
+    return digits
+
+
 def clean_uppercase_name(name_raw):
     """Convierte el nombre completo a mayúsculas limpias sin etiquetas HTML."""
     if not name_raw:
@@ -52,6 +74,11 @@ def clean_uppercase_name(name_raw):
 
 class EvaluationForm(forms.ModelForm):
     """Formulario exclusivo para Calificación y Evaluación de Asesores Comerciales."""
+    wants_raffle = forms.BooleanField(
+        required=False,
+        initial=False,
+        label="¿Realizaste una compra >= $1'000.000 hoy y vas a registrar tu factura para boletas del sorteo?"
+    )
     data_authorization = forms.BooleanField(
         required=True,
         initial=True,
@@ -63,6 +90,7 @@ class EvaluationForm(forms.ModelForm):
         fields = [
             "client_name",
             "client_phone",
+            "client_cedula",
             "client_city",
             "location",
             "advisor",
@@ -90,6 +118,12 @@ class EvaluationForm(forms.ModelForm):
                 "inputmode": "numeric",
                 "maxlength": "10",
                 "pattern": "3[0-9]{9}"
+            }),
+            "client_cedula": forms.TextInput(attrs={
+                "class": "form-control form-control-lg font-monospace",
+                "placeholder": "Ej: 1110456789 (solo números)",
+                "inputmode": "numeric",
+                "maxlength": "12",
             }),
             "client_city": forms.TextInput(attrs={
                 "class": "form-control",
@@ -122,6 +156,7 @@ class EvaluationForm(forms.ModelForm):
         self.fields["location"].required = True
         self.fields["client_name"].required = True
         self.fields["client_phone"].required = True
+        self.fields["client_cedula"].required = False
         self.fields["data_authorization"].required = True
         self.fields["client_city"].required = False
         self.fields["comments"].required = False
@@ -138,6 +173,15 @@ class EvaluationForm(forms.ModelForm):
         phone = cleaned.get("client_phone")
         advisor = cleaned.get("advisor")
         comments = cleaned.get("comments")
+        wants_raffle = bool(cleaned.get("wants_raffle"))
+
+        try:
+            cleaned["client_cedula"] = clean_colombian_cedula(
+                cleaned.get("client_cedula"),
+                required=wants_raffle,
+            )
+        except forms.ValidationError as exc:
+            self.add_error("client_cedula", exc)
 
         if comments:
             cleaned["comments"] = html.escape(comments.strip())
@@ -168,6 +212,7 @@ class RaffleRegistrationForm(forms.ModelForm):
         fields = [
             "client_name",
             "client_phone",
+            "client_cedula",
             "location",
             "advisor",
             "invoice_amount",
@@ -189,6 +234,13 @@ class RaffleRegistrationForm(forms.ModelForm):
                 "inputmode": "numeric",
                 "maxlength": "10",
                 "pattern": "3[0-9]{9}"
+            }),
+            "client_cedula": forms.TextInput(attrs={
+                "class": "form-control form-control-lg font-monospace",
+                "placeholder": "NÚMERO DE CÉDULA (OBLIGATORIO PARA CAJA)",
+                "required": "required",
+                "inputmode": "numeric",
+                "maxlength": "12",
             }),
             "location": forms.Select(attrs={
                 "class": "form-select form-select-lg fw-semibold",
@@ -218,6 +270,7 @@ class RaffleRegistrationForm(forms.ModelForm):
         self.fields["advisor"].queryset = Advisor.objects.filter(is_active=True).select_related('location')
         self.fields["client_name"].required = True
         self.fields["client_phone"].required = True
+        self.fields["client_cedula"].required = True
         self.fields["location"].required = True
         self.fields["invoice_amount"].required = True
         self.fields["advisor"].required = False
@@ -229,6 +282,9 @@ class RaffleRegistrationForm(forms.ModelForm):
 
     def clean_client_phone(self):
         return clean_colombian_phone(self.cleaned_data.get("client_phone"))
+
+    def clean_client_cedula(self):
+        return clean_colombian_cedula(self.cleaned_data.get("client_cedula"), required=True)
 
     def clean_invoice_amount(self):
         amount = self.cleaned_data.get("invoice_amount")
