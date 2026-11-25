@@ -12,97 +12,43 @@
         </div>
         <div class="d-flex gap-2">
             <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fs-6">
-                {{ advisor_qrs.count }} Asesores &bull; {{ location_qrs.count }} Sedes
+                {{ advisor_qrs.count }} Códigos QR de Asesores
             </span>
         </div>
     </div>
 
-    <!-- PESTAÑAS: ASESORES vs SEDES -->
-    <ul class="nav nav-pills mb-4 gap-2" id="qrTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active rounded-pill fw-bold px-4" id="advisors-tab" data-bs-toggle="pill" data-bs-target="#advisors-qrs" type="button" role="tab">
-                <i class="bi bi-person-badge-fill me-1"></i> QR Individuales de Asesores ({{ advisor_qrs.count }})
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link rounded-pill fw-bold px-4" id="locations-tab" data-bs-toggle="pill" data-bs-target="#locations-qrs" type="button" role="tab">
-                <i class="bi bi-building me-1"></i> QR Generales de Sedes ({{ location_qrs.count }})
-            </button>
-        </li>
-    </ul>
+    <!-- LISTADO DE CÓDIGOS QR POR ASESOR -->
+    <div class="row g-4">
+        {% for qr in advisor_qrs %}
+        <div class="col-md-6 col-xl-4">
+            <div class="card-innovar p-4 text-center h-100 d-flex flex-column" style="border-top: 4px solid var(--innovar-red);">
+                <span class="badge bg-light text-muted border mx-auto mb-2 font-monospace">{{ qr.code }}</span>
+                <h5 class="fw-bold mb-1 text-dark">{{ qr.advisor.full_name }}</h5>
+                <p class="text-muted small mb-3">{{ qr.location.name }} &bull; {{ qr.location.city }}</p>
 
-    <div class="tab-content" id="qrTabsContent">
-        
-        <!-- PESTAÑA 1: ASESORES -->
-        <div class="tab-pane fade show active" id="advisors-qrs" role="tabpanel">
-            <div class="row g-4">
-                {% for qr in advisor_qrs %}
-                <div class="col-md-6 col-xl-4">
-                    <div class="card-innovar p-4 text-center h-100 d-flex flex-column" style="border-top: 4px solid var(--innovar-red);">
-                        <span class="badge bg-light text-muted border mx-auto mb-2 font-monospace">{{ qr.code }}</span>
-                        <h5 class="fw-bold mb-1 text-dark">{{ qr.advisor.full_name }}</h5>
-                        <p class="text-muted small mb-3">{{ qr.location.name }} &bull; {{ qr.location.city }}</p>
+                <!-- IMAGEN DEL QR DINÁMICA -->
+                <div class="p-3 bg-white rounded-3 border d-inline-block mx-auto mb-3 shadow-sm">
+                    <img src="{% url 'serve_qr_png' qr.id %}" alt="{{ qr.code }}" style="width: 160px; height: 160px;" class="d-block mx-auto">
+                </div>
 
-                        <!-- IMAGEN DEL QR DINÁMICA -->
-                        <div class="p-3 bg-white rounded-3 border d-inline-block mx-auto mb-3 shadow-sm">
-                            <img src="{% url 'serve_qr_png' qr.id %}" alt="{{ qr.code }}" style="width: 160px; height: 160px;" class="d-block mx-auto">
-                        </div>
-
-                        <div class="mt-auto d-flex flex-column gap-2">
-                            <!-- BOTÓN PARA IMPRIMIR HABLADOR DE MOSTRADOR -->
-                            <a href="{% url 'print_advisor_display' qr.advisor.id %}" target="_blank" class="btn btn-sm btn-dark w-100 rounded-pill">
-                                <i class="bi bi-printer-fill me-1"></i> Imprimir Hablador de Mostrador
-                            </a>
-                            
-                            <div class="d-flex gap-2">
-                                <a href="{% url 'download_qr_png' qr.id %}" class="btn btn-sm btn-innovar w-50 rounded-pill">
-                                    <i class="bi bi-download me-1"></i> PNG
-                                </a>
-                                <button class="btn btn-sm btn-outline-secondary w-50 rounded-pill btn-copy-link" data-url="{{ request.scheme }}://{{ request.get_host }}{{ qr.evaluation_path }}">
-                                    <i class="bi bi-link-45deg me-1"></i> Copiar Link
-                                </button>
-                            </div>
-                        </div>
+                <div class="mt-auto d-flex flex-column gap-2">
+                    <!-- BOTÓN PARA IMPRIMIR HABLADOR DE MOSTRADOR -->
+                    <a href="{% url 'print_advisor_display' qr.advisor.id %}" target="_blank" class="btn btn-sm btn-dark w-100 rounded-pill">
+                        <i class="bi bi-printer-fill me-1"></i> Imprimir Hablador de Mostrador
+                    </a>
+                    
+                    <div class="d-flex gap-2">
+                        <a href="{% url 'download_qr_png' qr.id %}" class="btn btn-sm btn-innovar w-50 rounded-pill">
+                            <i class="bi bi-download me-1"></i> PNG
+                        </a>
+                        <button class="btn btn-sm btn-outline-secondary w-50 rounded-pill btn-copy-link" data-url="{{ request.scheme }}://{{ request.get_host }}{{ qr.evaluation_path }}">
+                            <i class="bi bi-link-45deg me-1"></i> Copiar Link
+                        </button>
                     </div>
                 </div>
-                {% endfor %}
             </div>
         </div>
-
-        <!-- PESTAÑA 2: SEDES GENERALES -->
-        <div class="tab-pane fade" id="locations-qrs" role="tabpanel">
-            <div class="row g-4">
-                {% for qr in location_qrs %}
-                <div class="col-md-6 col-xl-4">
-                    <div class="card-innovar p-4 text-center h-100 d-flex flex-column" style="border-top: 4px solid #111827;">
-                        <span class="badge bg-dark text-white mx-auto mb-2 font-monospace">{{ qr.code }}</span>
-                        <h5 class="fw-bold mb-1 text-dark">{{ qr.location.name }}</h5>
-                        <p class="text-muted small mb-3"><i class="bi bi-geo-alt-fill text-danger me-1"></i>{{ qr.location.city }} (QR General)</p>
-
-                        <!-- IMAGEN DEL QR DINÁMICA -->
-                        <div class="p-3 bg-white rounded-3 border d-inline-block mx-auto mb-3 shadow-sm">
-                            <img src="{% url 'serve_qr_png' qr.id %}" alt="{{ qr.code }}" style="width: 160px; height: 160px;" class="d-block mx-auto">
-                        </div>
-
-                        <div class="mt-auto d-flex flex-column gap-2">
-                            <a href="{% url 'print_location_display' qr.location.id %}" target="_blank" class="btn btn-sm btn-dark w-100 rounded-pill">
-                                <i class="bi bi-printer-fill me-1"></i> Imprimir Hablador de Sede
-                            </a>
-                            <div class="d-flex gap-2">
-                                <a href="{% url 'download_qr_png' qr.id %}" class="btn btn-sm btn-innovar w-50 rounded-pill">
-                                    <i class="bi bi-download me-1"></i> PNG
-                                </a>
-                                <button class="btn btn-sm btn-outline-secondary w-50 rounded-pill btn-copy-link" data-url="{{ request.scheme }}://{{ request.get_host }}{{ qr.evaluation_path }}">
-                                    <i class="bi bi-link-45deg me-1"></i> Copiar Link
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-
+        {% endfor %}
     </div>
 </div>
 {% endblock %}

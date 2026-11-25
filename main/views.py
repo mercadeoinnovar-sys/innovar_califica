@@ -59,9 +59,8 @@ def evaluate_advisor_direct(request, advisor_code):
 
 
 def evaluate_location_direct(request, location_id):
-    """Acceso QR directo por sede (Ej: /evaluar/sede/1/)."""
-    location = get_object_or_404(Location, pk=location_id)
-    return _process_evaluation(request, selected_advisor=None, selected_location=location)
+    """Redirige enlaces antiguos de sede directamente a la calificación de asesores."""
+    return redirect("evaluate_es")
 
 
 def evaluate(request):
@@ -745,12 +744,12 @@ def admin_reports(request):
     """Módulo de Reportes y Analítica con exportación e informe ejecutivo."""
     total_evals = Evaluation.objects.filter(is_valid=True).count()
     avg_rating = Evaluation.objects.filter(is_valid=True).aggregate(Avg('overall_star'))['overall_star__avg'] or 5.0
-    
-    # Distribución por sede oficial
-    sede_stats = Location.objects.annotate(
+
+    # Desempeño por asesor comercial activo
+    advisor_stats = Advisor.objects.filter(is_active=True).select_related('location').annotate(
         total_evals=Count('evaluations', filter=Q(evaluations__is_valid=True)),
         avg_stars=Avg('evaluations__overall_star', filter=Q(evaluations__is_valid=True))
-    ).order_by('-total_evals')
+    ).order_by('-avg_stars', '-total_evals')
 
     # Desempeño regional por Ciudad (Ibagué, Girardot y Neiva)
     city_stats = Location.objects.values('city').annotate(
@@ -762,7 +761,7 @@ def admin_reports(request):
     return render(request, "main/admin_reports.html", {
         "total_evals": total_evals,
         "avg_rating": round(avg_rating, 2),
-        "sede_stats": sede_stats,
+        "advisor_stats": advisor_stats,
         "city_stats": city_stats,
         "active_tab": "reports",
     })
@@ -789,13 +788,11 @@ def admin_settings(request):
 
 @login_required(login_url='admin_login')
 def qr_management(request):
-    """Gestión de códigos QR: individuales por asesor y generales por sede."""
-    advisor_qrs = QRCode.objects.filter(advisor__isnull=False).select_related('advisor', 'location')
-    location_qrs = QRCode.objects.filter(advisor__isnull=True).select_related('location')
+    """Gestión de códigos QR individuales por asesor comercial."""
+    advisor_qrs = QRCode.objects.filter(advisor__isnull=False, advisor__is_active=True).select_related('advisor', 'location')
 
     return render(request, "main/qr_management.html", {
         "advisor_qrs": advisor_qrs,
-        "location_qrs": location_qrs,
         "active_tab": "qrcodes",
     })
 
