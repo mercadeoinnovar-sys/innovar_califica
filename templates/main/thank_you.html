@@ -140,6 +140,12 @@
                 </div>
             </div>
 
+            <!-- CLÁUSULA ANTIFRAUDE EN BOLETA -->
+            <div class="p-2 rounded-3 mb-2 text-start" style="background: rgba(220, 38, 38, 0.18); border: 1px solid rgba(248, 113, 113, 0.45); font-size: 0.72rem;">
+                <strong class="text-warning"><i class="bi bi-exclamation-triangle-fill me-1"></i>CLÁUSULA ANTIFRAUDE:</strong>
+                <span class="text-white-50">Todo ganador se verifica manualmente en caja con cédula y factura original. Si el monto registrado fue inflado o alterado (ej. factura de $1M registrada por $2M, $10M o $20M), <strong class="text-white">todas las boletas quedan anuladas y NO se entregará el premio</strong>.</span>
+            </div>
+
             <!-- SELLO DIGITAL DE SEGURIDAD -->
             <div class="d-flex align-items-center justify-content-between pt-2 border-top border-secondary border-opacity-50 text-white-50" style="font-size: 0.68rem;">
                 <span><i class="bi bi-shield-check text-success me-1"></i> Trazabilidad Ley 1581 de 2012</span>
@@ -315,6 +321,7 @@
                         <input type="number" name="invoice_amount" id="id_invoice_amount" class="form-control form-control-lg fw-bold" placeholder="Ej: 1500000" min="1000000" step="1000" value="{{ entered_amount|default:'' }}" required>
                     </div>
                     <small class="text-muted" style="font-size: 0.72rem;">Mínimo $1'000.000 COP para obtener boletas oficiales.</small>
+                    <div id="fraudMismatchAlert" class="alert alert-danger py-2 px-3 small mt-2 mb-0 d-none rounded-3"></div>
                 </div>
 
                 <!-- CAMPO NÚMERO DE FACTURA (OPCIONAL) -->
@@ -341,14 +348,22 @@
                     </div>
                 </div>
 
-                <!-- NOTA DE SEGURIDAD Y TRANSPARENCIA PARA EL SORTEO -->
-                <div class="alert alert-warning border rounded-3 p-2 small mb-3 text-start shadow-xs" style="font-size: 0.76rem; background: #FFFBEB; border-color: #FDE68A !important;">
-                    <div class="d-flex align-items-center gap-2">
-                        <i class="bi bi-shield-lock-fill text-warning fs-5"></i>
+                <!-- ADVERTENCIA ANTIFRAUDE Y ACEPTACIÓN OBLIGATORIA -->
+                <div class="alert alert-danger rounded-3 p-3 small mb-3 text-start shadow-xs" style="font-size: 0.78rem; background: #FEF2F2; border: 2px solid #DC2626 !important;">
+                    <div class="d-flex align-items-start gap-2 mb-2">
+                        <i class="bi bi-exclamation-octagon-fill text-danger fs-4 flex-shrink-0"></i>
                         <div>
-                            <strong class="text-dark d-block">Verificación Oficial para el Sorteo:</strong>
-                            <span class="text-muted">Por seguridad y transparencia, verifica que el valor coincida con tu recibo. Si ganas, tu boleta será validada contra la factura física o electrónica.</span>
+                            <strong class="text-danger d-block text-uppercase" style="letter-spacing: 0.03em;">ADVERTENCIA ANTIFRAUDE — VERIFICACIÓN EN CAJA</strong>
+                            <span class="text-dark">
+                                El valor digitado debe coincidir exactamente con tu factura real. Si tu compra es de <strong>$1'000.000</strong> y colocas un monto mayor (<strong>$2'000.000, $10'000.000, $20'000.000</strong>, etc.) para sacar más boletas, <strong>incurres en fraude</strong>: al validar en caja <strong>NO recibirás ningún premio</strong>, incluso si alguna de tus boletas resulta ganadora en el sorteo.
+                            </span>
                         </div>
+                    </div>
+                    <div class="form-check pt-2 mt-2 border-top border-danger border-opacity-25">
+                        <input class="form-check-input border-danger" type="checkbox" id="id_accept_antifraud" name="accept_antifraud" required>
+                        <label class="form-check-label fw-semibold text-dark" for="id_accept_antifraud" style="font-size: 0.76rem;">
+                            Confirmo que el monto corresponde exactamente a mi factura real y acepto que cualquier alteración o trampa anula todas mis boletas y me descalifica del premio aunque salga ganador.
+                        </label>
                     </div>
                 </div>
 
@@ -482,6 +497,9 @@
     const btnSubmitInvoice = document.getElementById('btnSubmitInvoice');
     const btnSubmitInvoiceIcon = document.getElementById('btnSubmitInvoiceIcon');
     const btnSubmitInvoiceText = document.getElementById('btnSubmitInvoiceText');
+    const fraudMismatchAlert = document.getElementById('fraudMismatchAlert');
+    const acceptAntifraudCheckbox = document.getElementById('id_accept_antifraud');
+    let lastDetectedScannerAmount = 0;
 
     // Scroll automático a boletas si el cliente activó el interruptor al calificar
     {% if auto_scroll_raffle %}
@@ -543,6 +561,15 @@
         const raw = parseInt(invoiceAmountInput.value) || 0;
         const tickets = Math.floor(raw / 1000000);
 
+        if (fraudMismatchAlert) {
+            if (lastDetectedScannerAmount > 0 && raw > lastDetectedScannerAmount) {
+                fraudMismatchAlert.innerHTML = `<i class="bi bi-exclamation-octagon-fill me-1"></i><strong>🚨 ¡CUIDADO!</strong> Estás ingresando <strong>$${raw.toLocaleString('es-CO')} COP</strong>, que supera el total detectado en tu factura (<strong>$${lastDetectedScannerAmount.toLocaleString('es-CO')} COP</strong>). Si inflas el valor para obtener más boletas, <strong>NO recibirás el premio</strong> al verificar en caja así ganes.`;
+                fraudMismatchAlert.classList.remove('d-none');
+            } else {
+                fraudMismatchAlert.classList.add('d-none');
+            }
+        }
+
         if (tickets >= 1) {
             raffleResultBox.classList.remove('d-none');
             raffleTitle.innerHTML = `🎉 Califica con <strong>${tickets} boleta${tickets > 1 ? 's' : ''}</strong>`;
@@ -587,6 +614,12 @@
                 e.preventDefault();
                 alert("El monto de la factura debe ser de al menos $1'000.000 COP para generar boletas oficiales de sorteo.");
                 invoiceAmountInput.focus();
+                return false;
+            }
+            if (acceptAntifraudCheckbox && !acceptAntifraudCheckbox.checked) {
+                e.preventDefault();
+                acceptAntifraudCheckbox.focus();
+                alert("Debes confirmar que el monto corresponde exactamente a tu factura real y aceptar la cláusula antifraude antes de generar boletas.");
                 return false;
             }
             if (btnSubmitInvoice.getAttribute('data-submitting') === 'true') {
@@ -684,6 +717,9 @@
     function applyScannedTotal(amount, engineLabel = 'Escáner Inteligente') {
         const num = parseInt(amount, 10) || 0;
         if (num <= 0) return;
+        if (engineLabel !== 'Monto Seleccionado') {
+            lastDetectedScannerAmount = num;
+        }
         hideScanAlert();
         if (invoiceAmountInput) invoiceAmountInput.value = num;
         if (noScanYet) noScanYet.classList.add('d-none');
